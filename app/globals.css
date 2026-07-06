@@ -100,8 +100,73 @@ body {
     padding-left: calc(0.75rem + 4.5rem + 1rem);
   }
 
-  /* Asymmetric dashboard layout — premium SaaS hierarchy */
+  /* Dashboard rows */
 
+  .dash-row-duo {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  @media (min-width: 1200px) {
+    .dash-row-duo {
+      grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
+    }
+  }
+
+  .dash-row-triple {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  @media (min-width: 768px) {
+    .dash-row-triple {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 1200px) {
+    .dash-row-triple {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .dash-grid-cell {
+    display: flex;
+    min-height: 0;
+    min-width: 0;
+  }
+
+  .dash-grid-cell > * {
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 0;
+  }
+
+  .dash-row-bottom {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  @media (min-width: 1200px) {
+    .dash-row-bottom {
+      grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+    }
+  }
+
+  .dash-row-bottom-side {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    min-height: 0;
+  }
+
+  /* Legacy grids — kept for reference */
   .dash-grid-hero {
     display: grid;
     gap: 1.5rem;
@@ -111,11 +176,18 @@ body {
   @media (min-width: 1200px) {
     .dash-grid-hero {
       grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
-      grid-template-rows: minmax(0, 1fr) auto;
+      grid-template-rows: 1fr 1fr;
       grid-template-areas:
         "hero audit"
         "hero calendar";
       align-items: stretch;
+    }
+
+    .dash-hero-budget,
+    .dash-audit-slot,
+    .dash-calendar-slot {
+      display: flex;
+      min-height: 0;
     }
 
     .dash-hero-budget {
@@ -129,17 +201,39 @@ body {
     .dash-calendar-slot {
       grid-area: calendar;
     }
+
+    .dash-hero-budget > *,
+    .dash-audit-slot > *,
+    .dash-calendar-slot > * {
+      flex: 1 1 auto;
+      width: 100%;
+      min-height: 0;
+    }
   }
 
   .dash-grid-operations {
     display: grid;
     gap: 1.5rem;
     grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
   }
 
   @media (min-width: 1200px) {
     .dash-grid-operations {
       grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.65fr);
+    }
+
+    .dash-transactions-slot,
+    .dash-trend-slot {
+      display: flex;
+      min-height: 0;
+    }
+
+    .dash-transactions-slot > *,
+    .dash-trend-slot > * {
+      flex: 1 1 auto;
+      width: 100%;
+      min-height: 0;
     }
   }
 
@@ -147,11 +241,25 @@ body {
     display: grid;
     gap: 1.5rem;
     grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
   }
 
   @media (min-width: 768px) {
     .dash-grid-insights {
       grid-template-columns: minmax(0, 1.45fr) minmax(0, 0.55fr);
+    }
+
+    .dash-report-slot,
+    .dash-activity-slot {
+      display: flex;
+      min-height: 0;
+    }
+
+    .dash-report-slot > *,
+    .dash-activity-slot > * {
+      flex: 1 1 auto;
+      width: 100%;
+      min-height: 0;
     }
   }
 

@@ -21,8 +21,10 @@ function getFirstDayOfMonth(year: number, month: number) {
 
 export default function CalendarCard({
   variant = "default",
+  className = "",
 }: {
   variant?: "default" | "compact";
+  className?: string;
 }) {
   const isCompact = variant === "compact";
   const [hoveredDate, setHoveredDate] = useState<number | null>(null);
@@ -42,8 +44,8 @@ export default function CalendarCard({
   return (
     <Card
       className={`relative flex min-w-0 flex-col overflow-hidden ${
-        isCompact ? "min-h-[300px]" : "min-h-[420px]"
-      }`}
+        isCompact ? "min-h-0" : "min-h-[420px]"
+      } ${className}`}
     >
       <div
         className={`flex shrink-0 flex-wrap items-center justify-between gap-3 ${

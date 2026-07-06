@@ -19,8 +19,8 @@ import { formatCurrency } from "@/lib/format";
 
 export default function HeroBudgetCard() {
   return (
-    <Card className="flex min-h-[520px] min-w-0 flex-col lg:min-h-[560px]">
-      <div className="mb-6 flex shrink-0 flex-wrap items-center justify-between gap-3">
+    <Card className="flex h-full min-h-0 min-w-0 flex-col">
+      <div className="mb-5 flex shrink-0 flex-wrap items-center justify-between gap-3">
         <div>
           <p className="dash-section-label normal-case tracking-normal">
             2026년 1학기
@@ -34,13 +34,14 @@ export default function HeroBudgetCard() {
         </button>
       </div>
 
-      <div className="grid min-h-0 flex-1 gap-8 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:gap-10">
-        <div className="flex min-w-0 flex-col items-center justify-center overflow-visible">
+      <div className="grid min-h-0 flex-1 gap-6 lg:grid-cols-2 lg:gap-8">
+        <div className="flex min-w-0 flex-col items-center justify-center overflow-visible py-1">
           <BudgetDoughnutChart
             slices={BUDGET_SLICES}
             centerPercent={DOUGHNUT_CENTER_PERCENT}
+            size="large"
           />
-          <div className="mt-6 grid w-full max-w-md grid-cols-[repeat(auto-fit,minmax(6.5rem,1fr))] gap-x-3 gap-y-2">
+          <div className="mt-5 grid w-full max-w-md grid-cols-[repeat(auto-fit,minmax(6.5rem,1fr))] gap-x-3 gap-y-2">
             {BUDGET_SLICES.map((slice) => (
               <span
                 key={slice.category}
@@ -58,13 +59,13 @@ export default function HeroBudgetCard() {
           </div>
         </div>
 
-        <div className="flex min-w-0 flex-col justify-center border-t border-hairline pt-6 lg:border-l lg:border-t-0 lg:pl-10 lg:pt-0">
-          <p className="text-[clamp(2rem,3.5vw,2.75rem)] font-bold leading-none tracking-title-tight text-navy tabular-nums">
+        <div className="flex min-w-0 flex-col justify-center lg:pl-2">
+          <p className="text-[clamp(2rem,3.2vw,2.65rem)] font-bold leading-none tracking-title-tight text-navy tabular-nums">
             {formatCurrency(BUDGET_TOTAL)}
           </p>
           <p className="dash-section-label mt-2">총 예산</p>
 
-          <div className="mt-8 grid grid-cols-2 gap-6">
+          <div className="mt-6 grid grid-cols-2 gap-5">
             <div>
               <p className="dash-section-label">사용</p>
               <p className="dash-metric-lg mt-1.5">{formatCurrency(BUDGET_USED)}</p>
@@ -77,7 +78,7 @@ export default function HeroBudgetCard() {
             </div>
           </div>
 
-          <div className="mt-8">
+          <div className="mt-6">
             <div className="mb-2 flex items-center justify-between">
               <span className="dash-section-label normal-case tracking-normal">
                 사용률
@@ -94,13 +95,13 @@ export default function HeroBudgetCard() {
             </p>
           </div>
 
-          <AIMessage className="mt-6 border-t border-hairline pt-5">
+          <AIMessage className="mt-5 border-t border-hairline pt-4">
             이번 달 행사비 비중이 높습니다.
           </AIMessage>
         </div>
       </div>
 
-      <div className="mt-6 shrink-0 border-t border-hairline pt-4">
+      <div className="mt-5 shrink-0 border-t border-hairline pt-4">
         <Link href="/budget" className="block">
           <button
             type="button"

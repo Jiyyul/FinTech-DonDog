@@ -18,8 +18,8 @@ export default function RecentTransactions({
   className = "",
 }: RecentTransactionsProps) {
   return (
-    <Card className={`flex min-h-[580px] min-w-0 flex-col ${className}`}>
-      <div className="mb-6 flex shrink-0 flex-wrap items-center justify-between gap-3">
+    <Card className={`flex min-w-0 flex-col ${className}`}>
+      <div className="mb-5 flex shrink-0 flex-wrap items-center justify-between gap-3">
         <h3 className="dash-card-title">최근 거래내역</h3>
         <Link
           href="/transactions"
@@ -34,15 +34,15 @@ export default function RecentTransactions({
         </Link>
       </div>
 
-      <div className="dash-table-scroll min-h-0 flex-1">
-        <table className="w-full min-w-[640px] border-separate border-spacing-0">
-          <thead className="sticky top-0 bg-card">
+      <div className="min-w-0 flex-1">
+        <table className="w-full table-fixed border-separate border-spacing-0">
+          <thead>
             <tr className="text-left">
-              <th className="dash-table-head pr-6">거래처</th>
-              <th className="dash-table-head pr-6">AI 분류</th>
-              <th className="dash-table-head pr-6">날짜</th>
-              <th className="dash-table-head pr-6 text-right">금액</th>
-              <th className="dash-table-head text-right">상태</th>
+              <th className="dash-table-head w-[28%] pr-3">거래처</th>
+              <th className="dash-table-head w-[18%] pr-3">AI 분류</th>
+              <th className="dash-table-head w-[14%] pr-3">날짜</th>
+              <th className="dash-table-head w-[22%] pr-3 text-right">금액</th>
+              <th className="dash-table-head w-[18%] text-right">상태</th>
             </tr>
           </thead>
           <tbody>
@@ -52,10 +52,14 @@ export default function RecentTransactions({
                 onClick={() => onSelect(tx)}
                 className="dash-table-row border-b border-hairline last:border-0"
               >
-                <td className="pr-6 font-medium text-ink">{tx.merchant}</td>
-                <td className="pr-6 text-ink2">{tx.category}</td>
-                <td className="pr-6 tabular-nums text-muted">{tx.dateLabel}</td>
-                <td className="pr-6 text-right font-semibold tabular-nums text-ink">
+                <td className="truncate pr-3 font-medium text-ink">
+                  {tx.merchant}
+                </td>
+                <td className="truncate pr-3 text-ink2">{tx.category}</td>
+                <td className="truncate pr-3 tabular-nums text-muted">
+                  {tx.dateLabel}
+                </td>
+                <td className="truncate pr-3 text-right font-semibold tabular-nums text-ink">
                   {formatCurrency(tx.amount)}
                 </td>
                 <td className="text-right">

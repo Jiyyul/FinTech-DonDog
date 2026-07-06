@@ -24,40 +24,40 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-w-0">
-      {/* Tier 1 — Budget hero + AI audit + calendar */}
-      <section className="dash-grid-hero mb-10">
-        <div className="dash-hero-budget min-w-0">
+    <div className="min-w-0 space-y-10">
+      {/* Row 1 — 이번 학기 예산 · AI Audit */}
+      <section className="dash-row-duo">
+        <div className="dash-grid-cell min-w-0">
           <HeroBudgetCard />
         </div>
-        <div className="dash-audit-slot min-w-0">
+        <div className="dash-grid-cell min-w-0">
           <AuditCard
             className="h-full min-h-[360px]"
             onReview={() => setAuditOpen(true)}
           />
         </div>
-        <div className="dash-calendar-slot min-w-0">
-          <CalendarCard variant="compact" />
+      </section>
+
+      {/* Row 2 — 일정 · 월별 예산 추이 · AI 회계 리포트 */}
+      <section className="dash-row-triple">
+        <div className="dash-grid-cell min-w-0">
+          <CalendarCard variant="compact" className="h-full min-h-[360px]" />
+        </div>
+        <div className="dash-grid-cell min-w-0">
+          <BudgetTrendCard className="h-full min-h-[360px]" />
+        </div>
+        <div className="dash-grid-cell min-w-0">
+          <AIReportCard className="h-full min-h-[360px]" />
         </div>
       </section>
 
-      {/* Tier 2 — Transactions (primary) + Budget trend */}
-      <section className="dash-grid-operations mb-10">
-        <div className="dash-transactions-slot min-w-0">
+      {/* Row 3 — 최근 거래내역 · 최근 활동 */}
+      <section className="dash-row-bottom">
+        <div className="dash-grid-cell min-w-0">
           <RecentTransactions onSelect={handleSelectTransaction} />
         </div>
-        <div className="dash-trend-slot min-w-0">
-          <BudgetTrendCard />
-        </div>
-      </section>
-
-      {/* Tier 3 — AI insights + activity timeline */}
-      <section className="dash-grid-insights">
-        <div className="dash-report-slot min-w-0">
-          <AIReportCard className="min-h-[320px]" />
-        </div>
-        <div className="dash-activity-slot min-w-0">
-          <ActivityFeedCard className="min-h-[320px] lg:max-w-none" />
+        <div className="dash-grid-cell min-w-0">
+          <ActivityFeedCard className="h-full min-h-0" />
         </div>
       </section>
 

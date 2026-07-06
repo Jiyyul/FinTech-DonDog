@@ -25,7 +25,7 @@ export default function AIReportCard({ className = "" }: AIReportCardProps) {
         <Badge variant="accent">신뢰도 98%</Badge>
       </div>
 
-      <div className="grid flex-1 gap-3 sm:grid-cols-3">
+      <div className="grid flex-1 grid-cols-1 gap-3">
         <KPICard
           label="최고 비중"
           value="37%"

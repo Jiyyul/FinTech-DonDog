@@ -18,13 +18,21 @@ type BudgetDoughnutChartProps = {
   slices: BudgetCategorySlice[];
   centerPercent: number;
   centerLabel?: string;
+  size?: "default" | "large";
 };
+
+const SIZE_CONFIG = {
+  default: { box: 212, center: 34, inset: 10, label: 13 },
+  large: { box: 244, center: 40, inset: 12, label: 14 },
+} as const;
 
 export default function BudgetDoughnutChart({
   slices,
   centerPercent,
   centerLabel = "사용 완료",
+  size = "default",
 }: BudgetDoughnutChartProps) {
+  const dim = SIZE_CONFIG[size];
   const data = {
     labels: slices.map((s) => s.category),
     datasets: [
@@ -65,20 +73,35 @@ export default function BudgetDoughnutChart({
   };
 
   return (
-    <div className="relative mx-auto h-[212px] w-[212px] overflow-visible transition-transform duration-card ease-premium hover:scale-[1.01]">
+    <div
+      className="relative mx-auto overflow-visible transition-transform duration-card ease-premium hover:scale-[1.01]"
+      style={{ height: dim.box, width: dim.box }}
+    >
       <div
-        className="pointer-events-none absolute inset-[10px] z-0 rounded-full"
-        style={{ backgroundColor: CHART_UI.track }}
+        className="pointer-events-none absolute z-0 rounded-full"
+        style={{
+          backgroundColor: CHART_UI.track,
+          top: dim.inset,
+          right: dim.inset,
+          bottom: dim.inset,
+          left: dim.inset,
+        }}
         aria-hidden
       />
       <div className="relative z-[2] h-full w-full">
         <Doughnut data={data} options={options} />
       </div>
       <div className="pointer-events-none absolute inset-0 z-[1] flex flex-col items-center justify-center">
-        <span className="text-[34px] font-bold leading-none tracking-title-tight text-navy tabular-nums">
+        <span
+          className="font-bold leading-none tracking-title-tight text-navy tabular-nums"
+          style={{ fontSize: dim.center }}
+        >
           {centerPercent}%
         </span>
-        <span className="mt-1.5 text-[13px] font-medium text-muted">
+        <span
+          className="mt-1.5 font-medium text-muted"
+          style={{ fontSize: dim.label }}
+        >
           {centerLabel}
         </span>
       </div>
