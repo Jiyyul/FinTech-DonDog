@@ -4,7 +4,7 @@ import type { BudgetCategory } from "@/lib/dashboard-types";
 export const CHART_COLORS: Record<BudgetCategory, string> = {
   행사비: "#5B8DEF",
   식비: "#8FD36B",
-  운영비: "#BA8CFF",
+  운영비: "#93B2F8",
   교통비: "#FFD166",
   장비비: "#4FB3BF",
   홍보비: "#FF8C69",
@@ -15,7 +15,7 @@ export const CHART_COLORS: Record<BudgetCategory, string> = {
 export const CATEGORY_COLORS = CHART_COLORS;
 
 export const CHART_UI = {
-  navy: "#23324F",
+  navy: "#0A1680",
   border: "#E8EDF2",
   grid: "#F3F5F7",
   tooltipBg: "#FFFFFF",

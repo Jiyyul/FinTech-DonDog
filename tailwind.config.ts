@@ -9,21 +9,26 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          DEFAULT: "#C4FF4D",
-          hover: "#B8F23F",
-          pressed: "#A8E032",
-          subtle: "#F4FFE0",
+          DEFAULT: "#0A1680",
+          hover: "#081463",
+          pressed: "#07115C",
+          subtle: "#E8EFFE",
+        },
+        secondary: {
+          DEFAULT: "#93B2F8",
+          subtle: "#E4EDFD",
         },
         navy: {
-          DEFAULT: "#23324F",
-          hover: "#1C2840",
+          DEFAULT: "#0A1680",
+          hover: "#081463",
         },
         accent: {
-          DEFAULT: "#BA8CFF",
-          subtle: "#F3EBFF",
+          DEFAULT: "#F1B94C",
+          subtle: "#FBEDB0",
         },
-        appbg: "#F8FAFC",
-        sidebar: "#FCFCFD",
+        appbg: "#FCFDFF",
+        dashbg: "#C6D6F8",
+        sidebar: "#FCFDFF",
         surface: "#F3F5F7",
         card: "#FFFFFF",
         hairline: "#E8EDF2",
@@ -40,7 +45,7 @@ const config: Config = {
         chart: {
           event: "#5B8DEF",
           food: "#8FD36B",
-          ops: "#BA8CFF",
+          ops: "#93B2F8",
           transport: "#FFD166",
           promo: "#FF8C69",
           equipment: "#4FB3BF",

@@ -3,11 +3,7 @@
 import { useState } from "react";
 import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import Card from "@/components/common/Card";
-import { CALENDAR_EVENTS } from "@/lib/dashboard-mock-data";
-
-const YEAR = 2026;
-const MONTH = 6;
-const TODAY = 6;
+import type { CalendarEvent } from "@/lib/dashboard-types";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -19,17 +15,34 @@ function getFirstDayOfMonth(year: number, month: number) {
   return new Date(year, month, 1).getDay();
 }
 
-export default function CalendarCard({
-  variant = "default",
-  className = "",
-}: {
+type CalendarCardProps = {
+  events: CalendarEvent[];
   variant?: "default" | "compact";
   className?: string;
-}) {
+  onAddEvent: () => void;
+  onSelectEvent: (event: CalendarEvent) => void;
+};
+
+export default function CalendarCard({
+  events,
+  variant = "default",
+  className = "",
+  onAddEvent,
+  onSelectEvent,
+}: CalendarCardProps) {
   const isCompact = variant === "compact";
+  const [viewYear, setViewYear] = useState(2026);
+  const [viewMonth, setViewMonth] = useState(6);
   const [hoveredDate, setHoveredDate] = useState<number | null>(null);
-  const daysInMonth = getDaysInMonth(YEAR, MONTH);
-  const firstDay = getFirstDayOfMonth(YEAR, MONTH);
+
+  const today = new Date();
+  const todayDate =
+    today.getFullYear() === viewYear && today.getMonth() === viewMonth
+      ? today.getDate()
+      : null;
+
+  const daysInMonth = getDaysInMonth(viewYear, viewMonth);
+  const firstDay = getFirstDayOfMonth(viewYear, viewMonth);
 
   const cells: (number | null)[] = [
     ...Array(firstDay).fill(null),
@@ -37,9 +50,15 @@ export default function CalendarCard({
   ];
 
   const eventsForDate = (date: number) =>
-    CALENDAR_EVENTS.filter(
-      (e) => e.date === date && e.month === MONTH + 1 && e.year === YEAR
+    events.filter(
+      (e) => e.date === date && e.month === viewMonth + 1 && e.year === viewYear
     );
+
+  const shiftMonth = (delta: number) => {
+    const next = new Date(viewYear, viewMonth + delta, 1);
+    setViewYear(next.getFullYear());
+    setViewMonth(next.getMonth());
+  };
 
   return (
     <Card
@@ -54,13 +73,23 @@ export default function CalendarCard({
       >
         <h3 className={`dash-card-title ${isCompact ? "text-base" : ""}`}>일정</h3>
         <div className="flex items-center gap-1">
-          <button type="button" className="ui-icon-btn h-8 w-8" aria-label="이전 달">
+          <button
+            type="button"
+            className="ui-icon-btn h-8 w-8"
+            aria-label="이전 달"
+            onClick={() => shiftMonth(-1)}
+          >
             <ChevronLeft size={15} strokeWidth={1.5} />
           </button>
           <span className="min-w-[80px] text-center text-[13px] font-medium text-ink">
-            2026년 7월
+            {viewYear}년 {viewMonth + 1}월
           </span>
-          <button type="button" className="ui-icon-btn h-8 w-8" aria-label="다음 달">
+          <button
+            type="button"
+            className="ui-icon-btn h-8 w-8"
+            aria-label="다음 달"
+            onClick={() => shiftMonth(1)}
+          >
             <ChevronRight size={15} strokeWidth={1.5} />
           </button>
         </div>
@@ -81,21 +110,37 @@ export default function CalendarCard({
             return <div key={`empty-${idx}`} className={isCompact ? "h-7" : "h-8"} />;
           }
 
-          const isToday = date === TODAY;
-          const events = eventsForDate(date);
+          const isToday = date === todayDate;
+          const dayEvents = eventsForDate(date);
           const isHovered = hoveredDate === date;
+          const hasEvents = dayEvents.length > 0;
+          const eventColor = dayEvents[0]?.color;
+          const col = idx % 7;
+          const tooltipAlign =
+            col <= 1
+              ? "left-0 translate-x-0"
+              : col >= 5
+                ? "right-0 left-auto translate-x-0"
+                : "left-1/2 -translate-x-1/2";
 
           return (
             <div
               key={date}
-              className="relative"
+              className="relative overflow-visible"
               onMouseEnter={() => setHoveredDate(date)}
               onMouseLeave={() => setHoveredDate(null)}
             >
               <button
                 type="button"
+                onClick={() => {
+                  if (dayEvents.length > 0) {
+                    onSelectEvent(dayEvents[0]);
+                  }
+                }}
                 className={`flex w-full items-center justify-center rounded-lg font-medium transition-all duration-200 ease-premium ${
                   isCompact ? "h-7 text-[12px]" : "h-8 text-[13px]"
+                } ${
+                  hasEvents ? "cursor-pointer" : ""
                 } ${
                   isToday
                     ? "bg-navy font-semibold text-inverse shadow-sm"
@@ -104,33 +149,35 @@ export default function CalendarCard({
                       : "text-ink2 hover:bg-surface"
                 }`}
               >
-                {date}
+                {hasEvents && !isToday ? (
+                  <span
+                    className="flex h-[22px] w-[22px] items-center justify-center rounded-full text-[11px] font-semibold text-inverse shadow-sm"
+                    style={{ backgroundColor: eventColor }}
+                  >
+                    {date}
+                  </span>
+                ) : (
+                  date
+                )}
               </button>
-              {events.length > 0 && (
-                <div className="absolute bottom-0 left-1/2 flex -translate-x-1/2 gap-0.5">
-                  {events.slice(0, 2).map((ev) => (
-                    <span
-                      key={ev.id}
-                      className="h-1 w-1 rounded-full"
-                      style={{ backgroundColor: ev.color }}
-                    />
-                  ))}
-                </div>
-              )}
 
-              {isHovered && events.length > 0 && (
-                <div className="absolute left-1/2 top-full z-10 mt-1.5 w-36 -translate-x-1/2 rounded-xl border border-hairline bg-card p-2 shadow-card-hover">
-                  {events.map((ev) => (
-                    <span
+              {isHovered && dayEvents.length > 0 && (
+                <div
+                  className={`absolute top-full z-20 mt-1.5 w-max max-w-[11rem] rounded-xl border border-hairline bg-card p-2 shadow-card-hover ${tooltipAlign}`}
+                >
+                  {dayEvents.map((ev) => (
+                    <button
                       key={ev.id}
-                      className="mb-1 block truncate rounded-md px-2 py-0.5 text-[10px] font-medium last:mb-0"
-                      style={{
-                        backgroundColor: `${ev.color}12`,
-                        color: ev.color,
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectEvent(ev);
                       }}
+                      className="mb-1 block w-full whitespace-nowrap rounded-md px-2 py-1 text-left text-[10px] font-medium transition-colors last:mb-0 hover:bg-surface"
+                      style={{ color: ev.color }}
                     >
                       {ev.title}
-                    </span>
+                    </button>
                   ))}
                 </div>
               )}
@@ -139,26 +186,10 @@ export default function CalendarCard({
         })}
       </div>
 
-      {!isCompact && (
-        <div className="mt-4 flex shrink-0 flex-wrap gap-2">
-          {CALENDAR_EVENTS.slice(0, 3).map((ev) => (
-            <span
-              key={ev.id}
-              className="rounded-full px-2.5 py-1 text-[11px] font-medium"
-              style={{
-                backgroundColor: `${ev.color}10`,
-                color: ev.color,
-              }}
-            >
-              {ev.title}
-            </span>
-          ))}
-        </div>
-      )}
-
       <button
         type="button"
-        className={`absolute flex h-9 w-9 items-center justify-center rounded-full bg-brand text-ink shadow-card transition-all duration-200 ease-premium hover:scale-[1.04] hover:brightness-95 hover:shadow-card-hover ${
+        onClick={onAddEvent}
+        className={`absolute flex h-9 w-9 items-center justify-center rounded-full bg-brand text-inverse shadow-card transition-all duration-200 ease-premium hover:scale-[1.04] hover:brightness-110 hover:shadow-card-hover ${
           isCompact ? "bottom-5 right-5" : "bottom-7 right-7 h-10 w-10"
         }`}
         aria-label="일정 추가"

@@ -2,14 +2,19 @@
 
 import { useState } from "react";
 import { Building2, ChevronDown, Check } from "lucide-react";
-import { CURRENT_ORGANIZATION, ORGANIZATIONS } from "@/lib/mock-data";
+import type { Organization } from "@/lib/mock-data";
+import { CURRENT_ORGANIZATION } from "@/lib/mock-data";
 
-export default function OrganizationSwitcher() {
+type OrganizationSwitcherProps = {
+  organizations: Organization[];
+};
+
+export default function OrganizationSwitcher({ organizations }: OrganizationSwitcherProps) {
   const [open, setOpen] = useState(false);
   const [selectedId, setSelectedId] = useState(CURRENT_ORGANIZATION.id);
 
   const selected =
-    ORGANIZATIONS.find((org) => org.id === selectedId) ?? CURRENT_ORGANIZATION;
+    organizations.find((org) => org.id === selectedId) ?? organizations[0] ?? CURRENT_ORGANIZATION;
 
   return (
     <div className="relative">
@@ -24,9 +29,7 @@ export default function OrganizationSwitcher() {
           <Building2 size={16} className="text-ink2" strokeWidth={1.5} />
         </div>
         <div className="sidebar-label min-w-0 flex-1">
-          <p className="truncate text-[13px] font-medium text-ink">
-            {selected.name}
-          </p>
+          <p className="truncate text-[13px] font-medium text-ink">{selected.name}</p>
           <p className="truncate text-[11px] text-muted">{selected.semester}</p>
         </div>
         <ChevronDown
@@ -40,16 +43,12 @@ export default function OrganizationSwitcher() {
 
       {open && (
         <>
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setOpen(false)}
-            aria-hidden
-          />
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden />
           <ul
             role="listbox"
             className="sidebar-label absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-hairline bg-card p-1 shadow-card-hover"
           >
-            {ORGANIZATIONS.map((org) => {
+            {organizations.map((org) => {
               const isSelected = org.id === selectedId;
               return (
                 <li key={org.id} role="option" aria-selected={isSelected}>
@@ -64,19 +63,11 @@ export default function OrganizationSwitcher() {
                     }`}
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[13px] font-medium text-ink">
-                        {org.name}
-                      </p>
-                      <p className="truncate text-[11px] text-muted">
-                        {org.semester}
-                      </p>
+                      <p className="truncate text-[13px] font-medium text-ink">{org.name}</p>
+                      <p className="truncate text-[11px] text-muted">{org.semester}</p>
                     </div>
                     {isSelected && (
-                      <Check
-                        size={14}
-                        className="shrink-0 text-navy"
-                        strokeWidth={2}
-                      />
+                      <Check size={14} className="shrink-0 text-navy" strokeWidth={2} />
                     )}
                   </button>
                 </li>

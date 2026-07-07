@@ -54,7 +54,7 @@ export default function ReviewDrawer({
           </button>
           <button
             onClick={onClose}
-            className="w-full rounded-btn bg-brand py-2.5 text-[13px] font-semibold text-ink hover:brightness-95"
+            className="w-full rounded-btn bg-brand py-2.5 text-[13px] font-semibold text-inverse hover:brightness-110"
           >
             문제없음 승인
           </button>

@@ -2,14 +2,53 @@ import Link from "next/link";
 import Card from "@/components/common/Card";
 import Badge from "@/components/common/Badge";
 import Button from "@/components/common/Button";
-import KPICard from "@/components/common/KPICard";
 import { ArrowRight } from "lucide-react";
+import { AI_REPORT_SUMMARY } from "@/lib/dashboard-mock-data";
+import { formatChangeRate } from "@/lib/dashboard-utils";
 
 type AIReportCardProps = {
   className?: string;
 };
 
+type MetricTone = "navy" | "success" | "warning" | "danger";
+
+const toneClasses: Record<MetricTone, string> = {
+  navy: "text-navy",
+  success: "text-success",
+  warning: "text-warning",
+  danger: "text-danger",
+};
+
+function ReportMetric({
+  value,
+  description,
+  tone = "navy",
+}: {
+  value: string;
+  description: string;
+  tone?: MetricTone;
+}) {
+  return (
+    <div className="min-w-0 rounded-2xl bg-appbg px-4 py-3 ring-1 ring-hairline">
+      <p
+        className={`text-[clamp(1.35rem,2vw,1.65rem)] font-bold leading-none tracking-title-tight tabular-nums ${toneClasses[tone]}`}
+      >
+        {value}
+      </p>
+      <p className="mt-1.5 text-[12px] leading-snug text-ink2">{description}</p>
+    </div>
+  );
+}
+
+function momTone(rate: number): MetricTone {
+  if (rate < 0) return "success";
+  if (rate >= 5) return "warning";
+  return "navy";
+}
+
 export default function AIReportCard({ className = "" }: AIReportCardProps) {
+  const report = AI_REPORT_SUMMARY;
+
   return (
     <Card className={`flex min-w-0 flex-col ${className}`}>
       <div className="mb-5 flex shrink-0 flex-wrap items-start justify-between gap-3">
@@ -22,31 +61,45 @@ export default function AIReportCard({ className = "" }: AIReportCardProps) {
           </span>
           <h3 className="dash-card-title">AI 회계 리포트</h3>
         </div>
-        <Badge variant="accent">신뢰도 98%</Badge>
+        <Badge variant="accent">신뢰도 {report.confidence}%</Badge>
       </div>
 
-      <div className="grid flex-1 grid-cols-1 gap-3">
-        <KPICard
-          label="최고 비중"
-          value="37%"
-          description="이번 달 식비 비중이 가장 높습니다."
-          tone="navy"
+      <div className="flex min-h-0 flex-1 flex-col gap-2">
+        <ReportMetric
+          value={formatChangeRate(report.foodMoM)}
+          description="전달 대비 식비 변화"
+          tone={momTone(report.foodMoM)}
         />
-        <KPICard
-          label="예산 초과"
-          value="+8%"
-          description="행사비가 예산보다 초과되었습니다."
+        <ReportMetric
+          value={formatChangeRate(report.eventMoM)}
+          description="전달 대비 행사비 변화"
+          tone={momTone(report.eventMoM)}
+        />
+        <ReportMetric
+          value={formatChangeRate(report.opsMoM)}
+          description="전달 대비 운영비 변화"
+          tone={momTone(report.opsMoM)}
+        />
+        <ReportMetric
+          value={report.overBudgetItems.join(", ") || "-"}
+          description="예산 초과 항목"
           tone="warning"
         />
-        <KPICard
-          label="위반 가능"
-          value="1건"
-          description="회칙 위반 가능 거래가 발견되었습니다."
-          tone="danger"
-        />
+        <div className="grid grid-cols-2 gap-2">
+          <ReportMetric
+            value={`${report.ruleViolations}건`}
+            description="회칙 위반 가능"
+            tone="danger"
+          />
+          <ReportMetric
+            value={`${report.anomalyCount}건`}
+            description="이상 거래 감지"
+            tone="warning"
+          />
+        </div>
       </div>
 
-      <div className="mt-6 shrink-0">
+      <div className="mt-5 shrink-0">
         <Link href="/report">
           <Button
             variant="secondary"

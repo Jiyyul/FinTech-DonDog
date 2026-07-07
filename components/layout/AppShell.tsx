@@ -1,3 +1,6 @@
+"use client";
+
+import { usePathname } from "next/navigation";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 
@@ -6,8 +9,13 @@ type AppShellProps = {
 };
 
 export default function AppShell({ children }: AppShellProps) {
+  const pathname = usePathname();
+  const isDashboard = pathname === "/";
+
   return (
-    <div className="min-h-screen overflow-x-hidden bg-appbg">
+    <div
+      className={`min-h-screen overflow-x-hidden ${isDashboard ? "bg-dashbg" : "bg-appbg"}`}
+    >
       <Sidebar />
 
       <div className="ui-shell-offset min-w-0">

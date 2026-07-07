@@ -12,8 +12,14 @@ export default function Header() {
   const currentNav = getNavItemByPath(pathname);
   const pageTitle = currentNav?.label ?? "Dashboard";
 
+  const isDashboard = pathname === "/";
+
   return (
-    <header className="ui-shell-pad sticky top-0 z-30 flex min-h-[88px] flex-wrap items-center justify-between gap-x-4 gap-y-3 bg-appbg/90 py-4 backdrop-blur-xl">
+    <header
+      className={`ui-shell-pad sticky top-0 z-30 flex min-h-[88px] flex-wrap items-center justify-between gap-x-4 gap-y-3 py-4 backdrop-blur-xl ${
+        isDashboard ? "bg-dashbg/90" : "bg-appbg/90"
+      }`}
+    >
       <div className="min-w-0 flex-1 basis-[12rem]">
         <h1 className="ui-page-title">{pageTitle}</h1>
         <p className="ui-page-subtitle">{CURRENT_ORGANIZATION.semester}</p>

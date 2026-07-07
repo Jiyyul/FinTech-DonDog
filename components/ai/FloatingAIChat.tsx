@@ -53,7 +53,7 @@ export default function FloatingAIChat() {
 
       <div className="fixed bottom-6 right-6 z-[60] flex max-w-[calc(100vw-1.5rem)] flex-col items-end gap-3">
         {open && (
-          <div className="flex w-[min(360px,calc(100vw-2rem))] flex-col overflow-hidden rounded-modal border border-hairline bg-card shadow-card-hover animate-chat-open">
+          <div className="flex w-[min(380px,calc(100vw-2rem))] flex-col overflow-hidden rounded-modal border border-hairline bg-card shadow-card-hover animate-chat-open">
             <div className="flex items-center justify-between border-b border-hairline px-5 py-4">
               <div className="flex items-center gap-2.5">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-subtle text-sm ring-1 ring-accent/20">
@@ -118,11 +118,11 @@ export default function FloatingAIChat() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="메시지를 입력하세요"
-                  className="h-10 flex-1 rounded-btn border border-hairline bg-card px-3.5 text-[13px] outline-none transition-colors focus:border-brand focus:shadow-[0_0_0_3px_rgba(196,255,77,0.2)]"
+                  className="h-10 flex-1 rounded-btn border border-hairline bg-card px-3.5 text-[13px] outline-none transition-colors focus:border-brand focus:shadow-[0_0_0_3px_rgba(10,22,128,0.12)]"
                 />
                 <button
                   type="submit"
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-btn bg-brand text-ink transition-transform duration-200 hover:scale-[1.03] hover:brightness-95"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-btn bg-brand text-inverse transition-transform duration-200 hover:scale-[1.03] hover:brightness-110"
                   aria-label="전송"
                 >
                   <Send size={16} strokeWidth={1.5} />
@@ -135,12 +135,12 @@ export default function FloatingAIChat() {
         <button
           type="button"
           onClick={() => setOpen((prev) => !prev)}
-          className="flex h-12 w-12 items-center justify-center rounded-full bg-brand text-lg shadow-card transition-all duration-300 ease-premium hover:scale-[1.04] hover:brightness-95 hover:shadow-card-hover"
+          className="flex h-12 w-12 items-center justify-center rounded-full bg-brand text-inverse shadow-card transition-all duration-300 ease-premium hover:scale-[1.04] hover:brightness-110 hover:shadow-card-hover"
           aria-label="AI 채팅 열기"
           aria-expanded={open}
         >
           {open ? (
-            <X size={20} className="text-ink" strokeWidth={1.75} />
+            <X size={20} className="text-inverse" strokeWidth={1.75} />
           ) : (
             <span aria-hidden>🐶</span>
           )}

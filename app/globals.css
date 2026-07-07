@@ -4,7 +4,7 @@
 
 html,
 body {
-  background: #f8fafc;
+  background: #fcfdff;
   color: #1a1a1a;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -319,7 +319,7 @@ body {
 
   .dash-card-title {
     @apply text-lg font-semibold tracking-title-tight break-words;
-    color: #23324f;
+    color: #0a1680;
   }
 
   .dash-section-label {
@@ -328,12 +328,12 @@ body {
 
   .dash-metric-xl {
     @apply text-[clamp(1.5rem,2.2vw,2.25rem)] font-bold leading-tight tracking-title-tight tabular-nums break-words;
-    color: #23324f;
+    color: #0a1680;
   }
 
   .dash-metric-lg {
     @apply text-[clamp(1rem,1.6vw,1.25rem)] font-semibold tracking-title-tight tabular-nums break-words;
-    color: #23324f;
+    color: #0a1680;
   }
 
   .dash-kpi-highlight {
@@ -385,12 +385,12 @@ body {
   }
 
   .ui-icon-btn:hover {
-    color: #23324f;
+    color: #0a1680;
   }
 
   .ui-page-title {
     @apply text-[clamp(1.75rem,3vw,2.5rem)] font-bold leading-tight tracking-title-tight break-words;
-    color: #23324f;
+    color: #0a1680;
   }
 
   .ui-page-subtitle {

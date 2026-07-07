@@ -1,3 +1,5 @@
-import PlaceholderPage from "@/components/layout/PlaceholderPage";
+import ProfileContent from "@/components/profile/ProfileContent";
 
-export default PlaceholderPage;
+export default function ProfilePage() {
+  return <ProfileContent />;
+}

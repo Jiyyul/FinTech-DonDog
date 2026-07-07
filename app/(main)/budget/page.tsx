@@ -1,3 +1,5 @@
-import PlaceholderPage from "@/components/layout/PlaceholderPage";
+import BudgetManagementPage from "@/components/budget/BudgetManagementPage";
 
-export default PlaceholderPage;
+export default function BudgetPage() {
+  return <BudgetManagementPage />;
+}

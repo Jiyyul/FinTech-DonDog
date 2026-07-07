@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { MoreHorizontal, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import Card from "@/components/common/Card";
 import ProgressBar from "@/components/common/ProgressBar";
 import AIMessage from "@/components/common/AIMessage";
@@ -20,18 +20,13 @@ import { formatCurrency } from "@/lib/format";
 export default function HeroBudgetCard() {
   return (
     <Card className="flex h-full min-h-0 min-w-0 flex-col">
-      <div className="mb-5 flex shrink-0 flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="dash-section-label normal-case tracking-normal">
-            2026년 1학기
-          </p>
-          <h2 className="mt-1 text-[clamp(1.35rem,2.4vw,1.75rem)] font-bold tracking-title-tight text-navy">
-            이번 학기 예산
-          </h2>
-        </div>
-        <button type="button" className="ui-icon-btn" aria-label="메뉴">
-          <MoreHorizontal size={18} strokeWidth={1.5} />
-        </button>
+      <div className="mb-5 shrink-0">
+        <p className="dash-section-label normal-case tracking-normal">
+          2026년 1학기
+        </p>
+        <h2 className="mt-1 text-[clamp(1.35rem,2.4vw,1.75rem)] font-bold tracking-title-tight text-navy">
+          이번 학기 예산
+        </h2>
       </div>
 
       <div className="grid min-h-0 flex-1 gap-6 lg:grid-cols-2 lg:gap-8">
@@ -107,7 +102,7 @@ export default function HeroBudgetCard() {
             type="button"
             className="flex h-10 w-full items-center justify-center gap-2 text-[13px] font-medium text-muted transition-all duration-200 hover:gap-2.5 hover:text-navy"
           >
-            예산 상세보기
+            예산 관리
             <ArrowRight size={15} strokeWidth={1.5} />
           </button>
         </Link>

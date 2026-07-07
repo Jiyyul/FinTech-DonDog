@@ -27,7 +27,7 @@ export function MembersPage() {
       <Row label="김태원" meta="회장 · 전체 권한" />
       <Row label="배윤민" meta="부회장 · 승인 권한" />
       <Row label="이OO 외 9명" meta="부원 · 조회 권한" />
-      <button className="mt-4 rounded-btn bg-brand px-4 py-2.5 text-[13px] font-semibold text-ink hover:brightness-95">
+      <button className="mt-4 rounded-btn bg-brand px-4 py-2.5 text-[13px] font-semibold text-inverse hover:brightness-110">
         구성원 초대
       </button>
     </Card>
@@ -98,7 +98,7 @@ export function AddGroupPage() {
           className="rounded-[10px] border border-hairline px-3 py-2 text-[13px] outline-none"
         />
       </div>
-      <button className="rounded-btn bg-brand px-4 py-2.5 text-[13px] font-semibold text-ink hover:brightness-95">
+      <button className="rounded-btn bg-brand px-4 py-2.5 text-[13px] font-semibold text-inverse hover:brightness-110">
         다음
       </button>
     </Card>

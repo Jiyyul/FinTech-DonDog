@@ -21,7 +21,7 @@ export const KPI_STYLES = {
 
 export const BUTTON_STYLES = {
   primary:
-    "bg-brand text-ink shadow-[0_1px_2px_rgba(0,0,0,0.06)] hover:brightness-95 active:brightness-90",
+    "bg-brand text-inverse shadow-[0_1px_2px_rgba(10,22,128,0.12)] hover:bg-brand-hover active:bg-brand-pressed",
   secondary: "border border-hairline bg-card text-ink hover:bg-surface",
   ghost: "bg-transparent text-ink2 hover:bg-surface hover:text-navy",
   danger: "bg-danger text-inverse hover:brightness-95 active:brightness-90",

@@ -97,11 +97,13 @@ export default function BudgetTrendChart({ data }: BudgetTrendChartProps) {
           afterBody: (items) => {
             const point = data[items[0]?.dataIndex ?? 0];
             if (!point) return [];
-            return [
-              `사용: ${formatCurrency(point.used)}`,
-              `예산: ${formatCurrency(point.budget)}`,
-              `잔액: ${formatCurrency(point.balance)}`,
-            ];
+            const lines = [`사용: ${formatCurrency(point.used)}`];
+            if (point.changeRate !== null && point.changeRate !== undefined) {
+              const sign = point.changeRate > 0 ? "+" : "";
+              lines.push(`전월 대비: ${sign}${point.changeRate}%`);
+            }
+            lines.push(`예산: ${formatCurrency(point.budget)}`);
+            return lines;
           },
         },
       },

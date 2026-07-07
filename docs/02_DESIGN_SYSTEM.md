@@ -120,15 +120,15 @@ Color System
 
 ##################################################
 
-## Brand Colors
+## Color Palette
 
 Primary
 
-#C4FF4D
+#0A1680
 
-Don Dog Lime
+Primary Blue
 
-AI
+브랜드 컬러
 
 CTA
 
@@ -136,35 +136,47 @@ Progress
 
 Primary Button
 
+Active Menu
+
 ---
 
 Secondary
 
-#23324F
+#93B2F8
 
-Deep Navy
-
-Header
+Light Blue
 
 Icon
 
-Title
-
 Chart
+
+보조 강조
 
 ---
 
-Accent
+Accent 1
 
-#BA8CFF
+#F1B94C
 
-AI
+Gold
 
 Badge
 
-Hover
-
 Highlight
+
+AI 포인트
+
+---
+
+Accent 2
+
+#FBEDB0
+
+Soft Gold
+
+Accent Background
+
+Subtle Highlight
 
 ---
 
@@ -172,13 +184,15 @@ Highlight
 
 Main Background
 
-#F8FAFC
+#FCFDFF
+
+배경은 거의 흰색
 
 ---
 
 Sidebar
 
-#FCFCFD
+#FCFDFF
 
 ---
 
@@ -268,7 +282,7 @@ Chart Palette
 
 운영비
 
-#BA8CFF
+#93B2F8
 
 교통비
 
@@ -308,7 +322,7 @@ Color Usage Rule
 
 권장 비율
 
-White
+White / Background
 
 70%
 
@@ -316,21 +330,25 @@ Gray
 
 15%
 
-Primary Lime
+Primary Blue
 
 8%
 
-Navy
+Secondary
 
 5%
 
-Accent Purple
+Accent
 
 2%
 
 절대로
 
 브랜드 컬러를 화면 전체에 사용하지 않는다.
+
+강조색은 필요한 곳에만 사용한다.
+
+Primary Blue를 브랜드 컬러로 사용한다.
 
 ---
 
@@ -568,7 +586,7 @@ Buttons
 
 Primary
 
-Lime
+Primary Blue
 
 Secondary
 
@@ -620,7 +638,7 @@ Border Color
 
 Focus
 
-Primary Lime
+Primary Blue
 
 Placeholder
 
@@ -658,7 +676,7 @@ Hover 시
 
 현재 페이지
 
-Lime Indicator
+Primary Blue Indicator
 
 ---
 
@@ -750,7 +768,7 @@ Bold
 
 Hover
 
-#F8FAFC
+#FCFDFF
 
 Border
 
@@ -798,7 +816,7 @@ Red
 
 AI
 
-Purple
+Accent Gold
 
 ---
 
@@ -830,31 +848,11 @@ Motion
 
 ##################################################
 
-Hover
+Hover Animation 적용
 
-Lift
+Lift · Sidebar Slide · Modal Fade + Scale · Drawer Slide · Button Scale · Chart Fade
 
-Sidebar
-
-Slide
-
-Modal
-
-Fade + Scale
-
-Drawer
-
-Slide
-
-Button
-
-Scale
-
-Chart
-
-Fade
-
-Duration
+Transition
 
 200~300ms
 
@@ -993,20 +991,29 @@ Don Dog는
 Premium SaaS 수준의 일관성과 완성도를 유지한다.
 ## Brand Color Usage
 
-Primary Lime(#C4FF4D)는
+Primary Blue (#0A1680)는
 화면 전체를 지배하는 색이 아니다.
 
-Primary Lime은
+Primary Blue는
 
 - CTA 버튼
 - 진행률(Progress)
 - 현재 활성 메뉴
 - 선택 상태
 - 핵심 KPI
-- AI 강조 요소
 
 에서만 사용한다.
+
+Accent 1 (#F1B94C), Accent 2 (#FBEDB0)는
+
+- Badge
+- AI 포인트
+- 특정 Highlight
+
+처럼 꼭 필요한 곳에만 사용한다.
 
 일반 카드, 배경, 테이블에는 사용하지 않는다.
 
 브랜드 컬러는 화면의 약 5~10%만 차지해야 한다.
+
+모든 인터랙션에는 Hover Animation과 200~300ms Transition을 적용한다.

@@ -142,7 +142,7 @@ export default function Calendar() {
               </button>
               <button
                 onClick={saveEvent}
-                className="flex-1 rounded-btn bg-brand py-2.5 text-[13px] font-semibold text-ink hover:brightness-95"
+                className="flex-1 rounded-btn bg-brand py-2.5 text-[13px] font-semibold text-inverse hover:brightness-110"
               >
                 저장
               </button>

@@ -90,7 +90,12 @@ export default function TransactionDrawer({
               </div>
 
               <div className="mt-6 rounded-2xl bg-surface p-4 ring-1 ring-hairline">
-                <AIMessage>행사비로 분류했어요. 신뢰도 97%</AIMessage>
+                <AIMessage>
+                  {transaction.category}로 분류했어요.
+                  {transaction.aiConfidence
+                    ? ` 신뢰도 ${transaction.aiConfidence}%`
+                    : ""}
+                </AIMessage>
               </div>
             </div>
 

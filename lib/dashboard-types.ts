@@ -9,6 +9,12 @@ export type BudgetCategory =
   | "홍보비"
   | "기타";
 
+export type AnomalyType =
+  | "schedule_mismatch"
+  | "amount_threshold"
+  | "low_confidence"
+  | "rule_violation";
+
 export type DashboardTransaction = {
   id: string;
   merchant: string;
@@ -19,6 +25,20 @@ export type DashboardTransaction = {
   status: TransactionStatus;
   paymentMethod?: string;
   transactionId?: string;
+  hasReceipt?: boolean;
+  aiConfidence?: number;
+};
+
+export type AuditAnomaly = {
+  id: string;
+  type: AnomalyType;
+  transaction: DashboardTransaction;
+  reason: string;
+  confidence: number;
+  relatedSchedule?: string;
+  relatedScheduleId?: string;
+  ruleReference?: string;
+  deferred?: boolean;
 };
 
 export type CalendarEvent = {
@@ -28,6 +48,7 @@ export type CalendarEvent = {
   month: number;
   year: number;
   color: string;
+  description?: string;
 };
 
 export type ActivityItem = {
@@ -49,4 +70,23 @@ export type MonthlyBudgetPoint = {
   used: number;
   budget: number;
   balance: number;
+  changeRate?: number | null;
+};
+
+export type AIReportSummary = {
+  confidence: number;
+  lines: string[];
+  foodMoM: number;
+  eventMoM: number;
+  opsMoM: number;
+  overBudgetItems: string[];
+  ruleViolations: number;
+  anomalyCount: number;
+};
+
+export const ANOMALY_TYPE_LABELS: Record<AnomalyType, string> = {
+  schedule_mismatch: "일정 불일치",
+  amount_threshold: "고액 결제",
+  low_confidence: "카테고리 확인 필요",
+  rule_violation: "회칙 위반 가능",
 };

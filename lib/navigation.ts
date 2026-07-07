@@ -1,12 +1,7 @@
 import {
   LayoutDashboard,
-  ArrowLeftRight,
-  Wallet,
-  ShieldCheck,
-  FileBarChart,
-  Calendar,
-  Users,
   User,
+  Download,
   type LucideIcon,
 } from "lucide-react";
 
@@ -18,13 +13,8 @@ export type NavItem = {
 
 export const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/transactions", label: "거래내역", icon: ArrowLeftRight },
-  { href: "/budget", label: "예산관리", icon: Wallet },
-  { href: "/audit", label: "AI 감사", icon: ShieldCheck },
-  { href: "/report", label: "AI 리포트", icon: FileBarChart },
-  { href: "/calendar", label: "일정", icon: Calendar },
-  { href: "/members", label: "구성원", icon: Users },
-  { href: "/profile", label: "프로필", icon: User },
+  { href: "/profile", label: "Profile", icon: User },
+  { href: "/download", label: "Download Ledger", icon: Download },
 ];
 
 export function getNavItemByPath(pathname: string): NavItem | undefined {

@@ -1,3 +1,5 @@
-import PlaceholderPage from "@/components/layout/PlaceholderPage";
+import FullReportPage from "@/components/report/FullReportPage";
 
-export default PlaceholderPage;
+export default function ReportPage() {
+  return <FullReportPage />;
+}
