@@ -1,7 +1,10 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import Card from "@/components/common/Card";
 import Badge from "@/components/common/Badge";
 import Button from "@/components/common/Button";
-import { Clock } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
 import { ANOMALY_TYPE_LABELS, type AuditAnomaly } from "@/lib/dashboard-types";
 
@@ -20,8 +23,23 @@ export default function AuditCard({
   onReviewDeferred,
   className = "",
 }: AuditCardProps) {
-  const primary = anomalies[0];
+  const [currentIndex, setCurrentIndex] = useState(0);
   const totalCount = anomalies.length + deferredAnomalies.length;
+  const current = anomalies[currentIndex];
+
+  useEffect(() => {
+    setCurrentIndex((index) => Math.min(index, Math.max(0, anomalies.length - 1)));
+  }, [anomalies.length]);
+
+  const showArrows = anomalies.length > 1;
+
+  const goToPrevious = () => {
+    setCurrentIndex((index) => (index === 0 ? anomalies.length - 1 : index - 1));
+  };
+
+  const goToNext = () => {
+    setCurrentIndex((index) => (index === anomalies.length - 1 ? 0 : index + 1));
+  };
 
   return (
     <Card className={`flex min-w-0 flex-col ${className}`}>
@@ -81,20 +99,42 @@ export default function AuditCard({
           <span className="ml-1 text-[18px] font-medium text-muted">건</span>
         </p>
 
-        {primary ? (
-          <div className="dash-inner-surface mt-5">
-            <p className="text-[14px] font-medium text-ink">{primary.transaction.merchant}</p>
-            <p className="mt-1.5 text-[22px] font-semibold tracking-title-tight text-navy tabular-nums">
-              {formatCurrency(primary.transaction.amount)}
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Badge variant="info" size="sm">
-                {primary.transaction.category}
-              </Badge>
-              <Badge variant="warning" size="sm">
-                {ANOMALY_TYPE_LABELS[primary.type]}
-              </Badge>
+        {current ? (
+          <div className="mt-5 flex items-center gap-2">
+            {showArrows && (
+              <button
+                type="button"
+                onClick={goToPrevious}
+                className="ui-icon-btn h-8 w-8 shrink-0"
+                aria-label="이전 알림"
+              >
+                <ChevronLeft size={15} strokeWidth={1.5} />
+              </button>
+            )}
+            <div className="dash-inner-surface min-w-0 flex-1">
+              <p className="text-[14px] font-medium text-ink">{current.transaction.merchant}</p>
+              <p className="mt-1.5 text-[22px] font-semibold tracking-title-tight text-navy tabular-nums">
+                {formatCurrency(current.transaction.amount)}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Badge variant="info" size="sm">
+                  {current.transaction.category}
+                </Badge>
+                <Badge variant="warning" size="sm">
+                  {ANOMALY_TYPE_LABELS[current.type]}
+                </Badge>
+              </div>
             </div>
+            {showArrows && (
+              <button
+                type="button"
+                onClick={goToNext}
+                className="ui-icon-btn h-8 w-8 shrink-0"
+                aria-label="다음 알림"
+              >
+                <ChevronRight size={15} strokeWidth={1.5} />
+              </button>
+            )}
           </div>
         ) : (
           <div className="dash-inner-surface mt-5">
@@ -107,11 +147,11 @@ export default function AuditCard({
         )}
       </div>
 
-      {primary && (
+      {current && (
         <Button
           variant="primary"
           className="mt-5 w-full shrink-0"
-          onClick={() => onReview(primary)}
+          onClick={() => onReview(current)}
         >
           검토하기
         </Button>

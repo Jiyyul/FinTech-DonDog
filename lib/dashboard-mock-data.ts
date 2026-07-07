@@ -100,6 +100,27 @@ export const ANOMALY_QUEUE: AuditAnomaly[] = [
     confidence: 88,
     ruleReference: "식비 1인당 20,000원",
   },
+  {
+    id: "anomaly-5",
+    type: "duplicate_payment",
+    transaction: {
+      id: "tx-007",
+      merchant: "MT 펜션 예약",
+      category: "행사비",
+      date: "2026-07-03",
+      dateLabel: "7월 3일",
+      amount: 850_000,
+      status: "review",
+      paymentMethod: "학생회 체크카드",
+      transactionId: "TX-20260703-001",
+      hasReceipt: false,
+      aiConfidence: 96,
+    },
+    reason:
+      "동일 가맹점·동일 금액(₩850,000) 거래가 7월 2일에 이미 처리되었습니다. 중복 결제 여부를 확인해 주세요.",
+    confidence: 94,
+    ruleReference: "TX-20260702-001",
+  },
 ];
 
 export const RECENT_TRANSACTIONS: DashboardTransaction[] = [

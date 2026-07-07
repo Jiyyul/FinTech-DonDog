@@ -3,20 +3,28 @@ import {
   CalendarPlus,
   UserPlus,
   FileText,
-  Sparkles,
+  Clock,
 } from "lucide-react";
 import Card from "@/components/common/Card";
-import { ACTIVITY_FEED } from "@/lib/dashboard-mock-data";
+import type { ActivityIcon, ActivityItem } from "@/lib/dashboard-types";
 
-const iconMap: Record<string, React.ElementType> = {
-  "act-1": Sparkles,
-  "act-2": CheckCircle2,
-  "act-3": CalendarPlus,
-  "act-4": UserPlus,
-  "act-5": FileText,
+const iconMap: Record<ActivityIcon, React.ElementType> = {
+  check: CheckCircle2,
+  calendar: CalendarPlus,
+  clock: Clock,
+  user: UserPlus,
+  file: FileText,
 };
 
-export default function ActivityFeedCard({ className = "" }: { className?: string }) {
+type ActivityFeedCardProps = {
+  activities: ActivityItem[];
+  className?: string;
+};
+
+export default function ActivityFeedCard({
+  activities,
+  className = "",
+}: ActivityFeedCardProps) {
   return (
     <Card className={`flex min-w-0 flex-col ${className}`}>
       <h3 className="dash-card-title mb-6 shrink-0">최근 활동</h3>
@@ -25,8 +33,8 @@ export default function ActivityFeedCard({ className = "" }: { className?: strin
         <div className="absolute bottom-2 left-[11px] top-2 w-px bg-hairline" />
 
         <ul className="space-y-7">
-          {ACTIVITY_FEED.map((item) => {
-            const Icon = iconMap[item.id] ?? CheckCircle2;
+          {activities.map((item) => {
+            const Icon = item.icon ? iconMap[item.icon] : CheckCircle2;
 
             return (
               <li
@@ -37,13 +45,7 @@ export default function ActivityFeedCard({ className = "" }: { className?: strin
                   {item.hasDogIcon ? (
                     <span className="text-[10px]">🐶</span>
                   ) : (
-                    <Icon
-                      size={12}
-                      className={
-                        item.id === "act-1" ? "text-accent" : "text-ink2"
-                      }
-                      strokeWidth={1.5}
-                    />
+                    <Icon size={12} className="text-ink2" strokeWidth={1.5} />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">

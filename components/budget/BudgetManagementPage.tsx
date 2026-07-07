@@ -1,20 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, Upload } from "lucide-react";
 import Card from "@/components/common/Card";
 import Button from "@/components/common/Button";
 import type { BudgetCategory } from "@/lib/dashboard-types";
 import { CATEGORY_COLORS } from "@/lib/chart-colors";
+import { AMOUNT_THRESHOLD, BUDGET_USED } from "@/lib/dashboard-mock-data";
 import { formatCurrency } from "@/lib/format";
-
-type CategoryBudget = {
-  category: BudgetCategory;
-  budget: number;
-  used: number;
-  color: string;
-};
 
 type BudgetHistoryItem = {
   id: string;
@@ -27,13 +21,13 @@ type BudgetHistoryItem = {
   label?: string;
 };
 
-const INITIAL_CATEGORIES: CategoryBudget[] = [
-  { category: "행사비", budget: 2_500_000, used: 1_870_000, color: CATEGORY_COLORS.행사비 },
-  { category: "식비", budget: 1_500_000, used: 920_000, color: CATEGORY_COLORS.식비 },
-  { category: "운영비", budget: 1_100_000, used: 744_800, color: CATEGORY_COLORS.운영비 },
-  { category: "교통비", budget: 900_000, used: 585_200, color: CATEGORY_COLORS.교통비 },
-  { category: "장비비", budget: 600_000, used: 478_800, color: CATEGORY_COLORS.장비비 },
-  { category: "기타", budget: 400_000, used: 372_400, color: CATEGORY_COLORS.기타 },
+const TREND_CATEGORIES: BudgetCategory[] = [
+  "행사비",
+  "식비",
+  "운영비",
+  "교통비",
+  "장비비",
+  "기타",
 ];
 
 const INITIAL_HISTORY: BudgetHistoryItem[] = [
@@ -96,19 +90,17 @@ function formatHistoryDate(date: Date): string {
 }
 
 export default function BudgetManagementPage() {
+  const rulesFileRef = useRef<HTMLInputElement>(null);
   const [totalBudget, setTotalBudget] = useState(8_000_000);
   const [totalBudgetInput, setTotalBudgetInput] = useState("8000000");
-  const [categories] = useState(INITIAL_CATEGORIES);
+  const [anomalyThreshold, setAnomalyThreshold] = useState(AMOUNT_THRESHOLD);
+  const [anomalyThresholdInput, setAnomalyThresholdInput] = useState(String(AMOUNT_THRESHOLD));
+  const [rulesFileName, setRulesFileName] = useState("학생회_회칙.pdf");
   const [history, setHistory] = useState(INITIAL_HISTORY);
   const [trendFilter, setTrendFilter] = useState<TrendFilter>("전체");
 
   const trendData = MONTHLY_BY_CATEGORY[trendFilter] ?? MONTHLY_BY_CATEGORY.전체;
   const trendMax = Math.max(...trendData);
-
-  const totalUsed = useMemo(
-    () => categories.reduce((sum, c) => sum + c.used, 0),
-    [categories]
-  );
 
   const handleTotalBudgetSave = () => {
     const next = Number(totalBudgetInput);
@@ -126,6 +118,12 @@ export default function BudgetManagementPage() {
       ...prev,
     ]);
     setTotalBudget(next);
+  };
+
+  const handleAnomalyThresholdSave = () => {
+    const next = Number(anomalyThresholdInput);
+    if (Number.isNaN(next) || next <= 0 || next === anomalyThreshold) return;
+    setAnomalyThreshold(next);
   };
 
   return (
@@ -161,26 +159,58 @@ export default function BudgetManagementPage() {
           {formatCurrency(totalBudget)}
         </p>
         <p className="mt-1 text-[13px] text-muted">
-          사용 {formatCurrency(totalUsed)} · 잔액 {formatCurrency(totalBudget - totalUsed)}
+          사용 {formatCurrency(BUDGET_USED)} · 잔액 {formatCurrency(totalBudget - BUDGET_USED)}
         </p>
       </Card>
 
-      <div className="space-y-4">
-        {categories.map((item) => (
-          <Card key={item.category}>
-            <h2 className="text-[16px] font-semibold text-navy">{item.category}</h2>
-            <dl className="mt-4 grid grid-cols-3 gap-3">
-              <BudgetStat label="예산" value={formatCurrency(item.budget)} />
-              <BudgetStat label="사용" value={formatCurrency(item.used)} />
-              <BudgetStat
-                label="남음"
-                value={formatCurrency(item.budget - item.used)}
-                highlight
-              />
-            </dl>
-          </Card>
-        ))}
-      </div>
+      <Card className="mb-8">
+        <p className="mb-3 text-[13px] text-muted">이상감지 기준 금액</p>
+        <div className="flex flex-wrap items-end gap-3">
+          <input
+            type="number"
+            value={anomalyThresholdInput}
+            onChange={(e) => setAnomalyThresholdInput(e.target.value)}
+            className={`min-w-[12rem] flex-1 ${inputClass}`}
+            min={0}
+          />
+          <Button type="button" variant="primary" onClick={handleAnomalyThresholdSave}>
+            저장
+          </Button>
+        </div>
+        <p className="mt-3 text-[clamp(1.25rem,2vw,1.5rem)] font-bold tabular-nums text-navy">
+          {formatCurrency(anomalyThreshold)}
+        </p>
+        <p className="mt-1 text-[12px] text-muted">
+          이 금액 이상 결제 시 이상감지 알림을 보냅니다.
+        </p>
+      </Card>
+
+      <Card className="mb-8">
+        <p className="mb-3 text-[13px] text-muted">회칙 파일</p>
+        <input
+          ref={rulesFileRef}
+          type="file"
+          accept=".pdf,.doc,.docx,.hwp"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) setRulesFileName(file.name);
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => rulesFileRef.current?.click()}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-hairline bg-surface py-8 transition-colors hover:border-brand/30 hover:bg-brand-subtle/20"
+        >
+          <Upload size={20} className="text-muted" strokeWidth={1.5} />
+          <span className="text-[13px] text-ink2">
+            {rulesFileName ?? "PDF, DOC, HWP 파일 선택"}
+          </span>
+        </button>
+        <p className="mt-2 text-[12px] text-muted">
+          현재 등록된 회칙 파일을 변경하려면 새 파일을 선택하세요.
+        </p>
+      </Card>
 
       <div className="my-8 border-t border-hairline" />
 
@@ -219,7 +249,7 @@ export default function BudgetManagementPage() {
       <Card>
         <h2 className="mb-4 text-[16px] font-semibold text-navy">월별 사용 추이</h2>
         <div className="mb-5 flex flex-wrap gap-2">
-          {(["전체", ...INITIAL_CATEGORIES.map((c) => c.category)] as TrendFilter[]).map(
+          {(["전체", ...TREND_CATEGORIES] as TrendFilter[]).map(
             (cat) => (
               <button
                 key={cat}
@@ -264,29 +294,6 @@ export default function BudgetManagementPage() {
           })}
         </ul>
       </Card>
-    </div>
-  );
-}
-
-function BudgetStat({
-  label,
-  value,
-  highlight = false,
-}: {
-  label: string;
-  value: string;
-  highlight?: boolean;
-}) {
-  return (
-    <div className="rounded-xl bg-appbg p-3 ring-1 ring-hairline">
-      <dt className="text-[11px] text-muted">{label}</dt>
-      <dd
-        className={`mt-1 text-[14px] font-semibold tabular-nums ${
-          highlight ? "text-navy" : "text-ink"
-        }`}
-      >
-        {value}
-      </dd>
     </div>
   );
 }

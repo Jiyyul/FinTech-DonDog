@@ -3,11 +3,19 @@ import { Search } from "lucide-react";
 type SearchBarProps = {
   placeholder?: string;
   className?: string;
+  value: string;
+  onChange: (value: string) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
 };
 
 export default function SearchBar({
   placeholder = "거래처, 항목 검색",
   className = "",
+  value,
+  onChange,
+  onFocus,
+  onBlur,
 }: SearchBarProps) {
   return (
     <div
@@ -16,6 +24,10 @@ export default function SearchBar({
       <Search size={18} className="shrink-0 text-muted" strokeWidth={1.5} />
       <input
         type="search"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onFocus={onFocus}
+        onBlur={onBlur}
         placeholder={placeholder}
         className="min-w-0 w-full border-none bg-transparent text-[15px] text-ink outline-none placeholder:text-muted"
         aria-label="검색"

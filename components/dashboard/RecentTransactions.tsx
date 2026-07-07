@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Paperclip, X } from "lucide-react";
 import Card from "@/components/common/Card";
 import StatusBadge from "@/components/common/StatusBadge";
 import { ALL_TRANSACTIONS } from "@/lib/dashboard-mock-data";
 import { formatCurrency } from "@/lib/format";
+import { matchesSearch } from "@/lib/search-utils";
 import type { DashboardTransaction } from "@/lib/dashboard-types";
 
 type RecentTransactionsProps = {
   transactions: DashboardTransaction[];
+  searchQuery?: string;
   onSelect: (transaction: DashboardTransaction) => void;
   onAddReceipt: (transaction: DashboardTransaction) => void;
   className?: string;
@@ -78,11 +80,17 @@ function TransactionsTable({
 
 export default function RecentTransactions({
   transactions,
+  searchQuery = "",
   onSelect,
   onAddReceipt,
   className = "",
 }: RecentTransactionsProps) {
   const [viewAllOpen, setViewAllOpen] = useState(false);
+
+  const allTransactionRows = useMemo(() => {
+    if (!searchQuery.trim()) return ALL_TRANSACTIONS;
+    return ALL_TRANSACTIONS.filter((tx) => matchesSearch(tx, searchQuery));
+  }, [searchQuery]);
 
   useEffect(() => {
     if (viewAllOpen) {
@@ -154,7 +162,7 @@ export default function RecentTransactions({
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
               <TransactionsTable
-                rows={ALL_TRANSACTIONS}
+                rows={allTransactionRows}
                 onSelect={(tx) => {
                   setViewAllOpen(false);
                   onSelect(tx);

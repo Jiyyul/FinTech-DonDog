@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import HeroBudgetCard from "@/components/dashboard/HeroBudgetCard";
 import AuditCard from "@/components/dashboard/AuditCard";
 import CalendarCard from "@/components/dashboard/CalendarCard";
@@ -14,12 +14,18 @@ import ExceptionModal from "@/components/dashboard/ExceptionModal";
 import ReceiptUploadModal from "@/components/dashboard/ReceiptUploadModal";
 import ScheduleFormModal from "@/components/dashboard/ScheduleFormModal";
 import FloatingAIChat from "@/components/ai/FloatingAIChat";
+import { useSearch } from "@/components/layout/SearchProvider";
 import {
+  ALL_TRANSACTIONS,
   ANOMALY_QUEUE,
+  ACTIVITY_FEED,
   CALENDAR_EVENTS,
   RECENT_TRANSACTIONS,
 } from "@/lib/dashboard-mock-data";
+import { prependActivity } from "@/lib/activity-feed";
+import { matchesSearch } from "@/lib/search-utils";
 import type {
+  ActivityItem,
   AuditAnomaly,
   BudgetCategory,
   CalendarEvent,
@@ -27,10 +33,19 @@ import type {
 } from "@/lib/dashboard-types";
 
 export default function Dashboard() {
+  const { query, selectTransactionId, clearSelectTransaction } = useSearch();
   const [anomalies, setAnomalies] = useState(ANOMALY_QUEUE);
   const [deferredAnomalies, setDeferredAnomalies] = useState<AuditAnomaly[]>([]);
   const [transactions, setTransactions] = useState(RECENT_TRANSACTIONS);
   const [calendarEvents, setCalendarEvents] = useState(CALENDAR_EVENTS);
+  const [activities, setActivities] = useState<ActivityItem[]>(ACTIVITY_FEED);
+
+  const logActivity = (
+    message: string,
+    options?: { hasDogIcon?: boolean; icon?: ActivityItem["icon"] }
+  ) => {
+    setActivities((prev) => prependActivity(prev, message, options));
+  };
 
   const [anomalyModalOpen, setAnomalyModalOpen] = useState(false);
   const [selectedAnomaly, setSelectedAnomaly] = useState<AuditAnomaly | null>(null);
@@ -62,6 +77,22 @@ export default function Dashboard() {
     setTxDrawerOpen(true);
   };
 
+  const displayedTransactions = useMemo(() => {
+    if (!query.trim()) return transactions;
+    return transactions.filter((tx) => matchesSearch(tx, query));
+  }, [transactions, query]);
+
+  useEffect(() => {
+    if (!selectTransactionId) return;
+
+    const tx =
+      transactions.find((t) => t.id === selectTransactionId) ??
+      ALL_TRANSACTIONS.find((t) => t.id === selectTransactionId);
+
+    if (tx) handleSelectTransaction(tx);
+    clearSelectTransaction();
+  }, [selectTransactionId, transactions, clearSelectTransaction]);
+
   const closeAnomalyModal = () => {
     setAnomalyModalOpen(false);
     setSelectedAnomaly(null);
@@ -73,6 +104,9 @@ export default function Dashboard() {
 
   const handleApprove = () => {
     if (!selectedAnomaly) return;
+    logActivity(`${selectedAnomaly.transaction.merchant} 이상거래를 승인했습니다.`, {
+      icon: "check",
+    });
     removeFromActiveQueue(selectedAnomaly.id);
     setDeferredAnomalies((prev) => prev.filter((a) => a.id !== selectedAnomaly.id));
     closeAnomalyModal();
@@ -87,6 +121,9 @@ export default function Dashboard() {
       if (prev.some((a) => a.id === deferredItem.id)) return prev;
       return [...prev, deferredItem];
     });
+    logActivity(`${selectedAnomaly.transaction.merchant} 이상거래를 보류했습니다.`, {
+      icon: "clock",
+    });
     removeFromActiveQueue(selectedAnomaly.id);
     setExceptionModalOpen(false);
     closeAnomalyModal();
@@ -94,6 +131,9 @@ export default function Dashboard() {
 
   const handleCoApproval = () => {
     if (!selectedAnomaly) return;
+    logActivity(`${selectedAnomaly.transaction.merchant} 공동 승인을 요청했습니다.`, {
+      icon: "check",
+    });
     removeFromActiveQueue(selectedAnomaly.id);
     setDeferredAnomalies((prev) => prev.filter((a) => a.id !== selectedAnomaly.id));
     closeAnomalyModal();
@@ -115,6 +155,10 @@ export default function Dashboard() {
           ? { ...prev, relatedScheduleId: scheduleId, relatedSchedule: schedule.title }
           : null
       );
+      logActivity(
+        `${selectedAnomaly.transaction.merchant} 거래를 "${schedule.title}" 일정에 연결했습니다.`,
+        { icon: "calendar" }
+      );
     }
     removeFromActiveQueue(selectedAnomaly.id);
     setExceptionModalOpen(false);
@@ -123,6 +167,7 @@ export default function Dashboard() {
 
   const handleCategoryChange = (category: BudgetCategory) => {
     if (!selectedAnomaly) return;
+    if (selectedAnomaly.transaction.category === category) return;
     const update = (a: AuditAnomaly) =>
       a.id === selectedAnomaly.id
         ? { ...a, transaction: { ...a.transaction, category } }
@@ -132,6 +177,10 @@ export default function Dashboard() {
     setSelectedAnomaly((prev) =>
       prev ? { ...prev, transaction: { ...prev.transaction, category } } : null
     );
+    logActivity(
+      `${selectedAnomaly.transaction.merchant} 카테고리를 ${category}(으)로 변경했습니다.`,
+      { hasDogIcon: true }
+    );
   };
 
   const handleSaveEvent = (event: Omit<CalendarEvent, "id"> & { id?: string }) => {
@@ -139,18 +188,24 @@ export default function Dashboard() {
       setCalendarEvents((prev) =>
         prev.map((e) => (e.id === event.id ? { ...e, ...event, id: event.id } : e))
       );
+      logActivity(`일정 "${event.title}"을(를) 수정했습니다.`, { icon: "calendar" });
     } else {
       const newEvent: CalendarEvent = {
         ...event,
         id: `ev-${Date.now()}`,
       };
       setCalendarEvents((prev) => [...prev, newEvent]);
+      logActivity(`새 일정 "${event.title}"이(가) 등록되었습니다.`, { icon: "calendar" });
     }
     setEditingEvent(null);
   };
 
   const handleDeleteEvent = (id: string) => {
+    const event = calendarEvents.find((e) => e.id === id);
     setCalendarEvents((prev) => prev.filter((e) => e.id !== id));
+    if (event) {
+      logActivity(`일정 "${event.title}"을(를) 삭제했습니다.`, { icon: "calendar" });
+    }
     setEditingEvent(null);
   };
 
@@ -159,6 +214,7 @@ export default function Dashboard() {
     setTransactions((prev) =>
       prev.map((t) => (t.id === receiptTx.id ? { ...t, hasReceipt: true } : t))
     );
+    logActivity(`${receiptTx.merchant} 영수증을 등록했습니다.`, { icon: "file" });
     setReceiptModalOpen(false);
     setReceiptTx(null);
   };
@@ -207,7 +263,8 @@ export default function Dashboard() {
       <section className="dash-row-bottom">
         <div className="dash-grid-cell min-w-0">
           <RecentTransactions
-            transactions={transactions}
+            transactions={displayedTransactions}
+            searchQuery={query}
             onSelect={handleSelectTransaction}
             onAddReceipt={(tx) => {
               setReceiptTx(tx);
@@ -216,7 +273,7 @@ export default function Dashboard() {
           />
         </div>
         <div className="dash-grid-cell min-w-0">
-          <ActivityFeedCard className="h-full min-h-0" />
+          <ActivityFeedCard activities={activities} className="h-full min-h-0" />
         </div>
       </section>
 
