@@ -1,3 +1,5 @@
-import PlaceholderPage from "@/components/layout/PlaceholderPage";
+import AuditDashboardPage from "@/components/anomalies/AuditDashboardPage";
 
-export default PlaceholderPage;
+export default function AuditPage() {
+  return <AuditDashboardPage />;
+}

@@ -2,6 +2,8 @@ import {
   LayoutDashboard,
   User,
   Download,
+  ShieldAlert,
+  Receipt,
   type LucideIcon,
 } from "lucide-react";
 
@@ -13,6 +15,8 @@ export type NavItem = {
 
 export const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/audit", label: "이상거래", icon: ShieldAlert },
+  { href: "/receipts", label: "영수증", icon: Receipt },
   { href: "/profile", label: "Profile", icon: User },
   { href: "/download", label: "Download Ledger", icon: Download },
 ];
