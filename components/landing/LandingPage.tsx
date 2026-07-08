@@ -11,11 +11,11 @@ import PricingSection from "@/components/landing/PricingSection";
 import CTASection from "@/components/landing/CTASection";
 import { AuthProvider, useAuth } from "@/components/auth/AuthProvider";
 import AuthModal from "@/components/auth/AuthModal";
+import PaymentModal from "@/components/payment/PaymentModal";
+import { PaymentProvider, usePayment } from "@/components/payment/PaymentProvider";
 import Toast from "@/components/common/Toast";
 
 function LandingFooter() {
-  const { openAuth } = useAuth();
-
   return (
     <footer
       id="support"
@@ -32,13 +32,6 @@ function LandingFooter() {
           <a href="#blog" className="transition-colors hover:text-navy">
             블로그
           </a>
-          <button
-            type="button"
-            onClick={() => openAuth("login")}
-            className="transition-colors hover:text-navy"
-          >
-            로그인
-          </button>
         </div>
       </div>
     </footer>
@@ -46,7 +39,9 @@ function LandingFooter() {
 }
 
 function LandingPageContent() {
-  const { toast } = useAuth();
+  const { toast: authToast } = useAuth();
+  const { toast: paymentToast } = usePayment();
+  const toast = authToast ?? paymentToast;
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-appbg">
@@ -64,6 +59,7 @@ function LandingPageContent() {
       <div id="blog" className="sr-only" aria-hidden />
       <LandingFooter />
       <AuthModal />
+      <PaymentModal />
       <Toast message={toast} />
     </div>
   );
@@ -72,7 +68,9 @@ function LandingPageContent() {
 export default function LandingPage() {
   return (
     <AuthProvider>
-      <LandingPageContent />
+      <PaymentProvider>
+        <LandingPageContent />
+      </PaymentProvider>
     </AuthProvider>
   );
 }

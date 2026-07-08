@@ -42,16 +42,9 @@ export type Testimonial = {
   quote: string;
 };
 
-export type PricingPlan = {
-  id: string;
-  name: string;
-  price: string;
-  period: string;
-  description: string;
-  features: string[];
-  featured?: boolean;
-  cta: string;
-};
+export type PricingPlan = import("@/lib/plans").Plan;
+
+export { PLANS_LIST as PRICING_PLANS } from "@/lib/plans";
 
 export const LANDING_NAV_LINKS: NavLink[] = [
   { label: "기능", href: "#features" },
@@ -154,62 +147,6 @@ export const TESTIMONIALS: Testimonial[] = [
     club: "밴드동아리",
     quote:
       "동아리원들이 실시간으로 회계를 볼 수 있어 투명성 문제가 완전히 해결됐습니다.",
-  },
-];
-
-export const PRICING_PLANS: PricingPlan[] = [
-  {
-    id: "free",
-    name: "Free",
-    price: "₩0",
-    period: "영구 무료",
-    description: "소규모 동아리를 위한 기본 기능",
-    features: ["월 50건 거래", "AI 자동 분류", "기본 예산 관리", "1개 동아리"],
-    cta: "무료로 시작",
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    price: "₩9,900",
-    period: "월",
-    description: "활발한 동아리를 위한 추천 플랜",
-    features: [
-      "무제한 거래",
-      "OCR 영수증 매칭",
-      "이상거래 감지",
-      "AI 리포트",
-      "3개 동아리",
-    ],
-    featured: true,
-    cta: "Pro 시작하기",
-  },
-  {
-    id: "team",
-    name: "Team",
-    price: "₩29,900",
-    period: "월",
-    description: "여러 동아리를 운영하는 학생회",
-    features: [
-      "Pro 전체 기능",
-      "10개 동아리",
-      "공동 승인 워크플로",
-      "우선 지원",
-    ],
-    cta: "Team 시작하기",
-  },
-  {
-    id: "club",
-    name: "Club",
-    price: "문의",
-    period: "맞춤",
-    description: "대규모 학생회·연합회",
-    features: [
-      "무제한 동아리",
-      "전담 매니저",
-      "맞춤 감사 리포트",
-      "API 연동",
-    ],
-    cta: "문의하기",
   },
 ];
 

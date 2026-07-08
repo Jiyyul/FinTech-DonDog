@@ -3,7 +3,8 @@
 import { Check } from "lucide-react";
 import Badge from "@/components/common/Badge";
 import Button from "@/components/common/Button";
-import { PRICING_PLANS } from "@/lib/landing-data";
+import { PLANS_LIST } from "@/lib/plans";
+import { formatPlanPrice } from "@/lib/plans";
 
 type SignupPlanPickerProps = {
   selectedPlanId: string | null;
@@ -20,7 +21,7 @@ export default function SignupPlanPicker({
   onBack,
   canConfirm,
 }: SignupPlanPickerProps) {
-  const selectedPlan = PRICING_PLANS.find((plan) => plan.id === selectedPlanId);
+  const selectedPlan = PLANS_LIST.find((plan) => plan.id === selectedPlanId);
 
   return (
     <div className="space-y-4">
@@ -39,7 +40,7 @@ export default function SignupPlanPicker({
       </div>
 
       <div className="space-y-2.5">
-        {PRICING_PLANS.map((plan) => {
+        {PLANS_LIST.map((plan) => {
           const isSelected = selectedPlanId === plan.id;
 
           return (
@@ -64,14 +65,8 @@ export default function SignupPlanPicker({
                     )}
                   </div>
                   <p className="mt-1 text-[12px] text-ink2">{plan.description}</p>
-                  <p className="mt-2 text-[14px] font-bold text-navy">
-                    {plan.price}
-                    {plan.period !== "맞춤" && (
-                      <span className="ml-1 text-[12px] font-medium text-muted">
-                        / {plan.period}
-                      </span>
-                    )}
-                  </p>
+                  <p className="mt-2 text-[14px] font-bold text-navy">{formatPlanPrice(plan)}</p>
+                  <p className="mt-1 text-[12px] text-muted">조직 관리 {plan.organizationLimit}</p>
                   <ul className="mt-3 space-y-1.5">
                     {plan.features.slice(0, 3).map((feature) => (
                       <li

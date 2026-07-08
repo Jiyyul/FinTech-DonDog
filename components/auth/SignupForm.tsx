@@ -5,8 +5,11 @@ import Button from "@/components/common/Button";
 import PasswordInput from "@/components/auth/PasswordInput";
 import SignupFieldHint from "@/components/auth/SignupFieldHint";
 import SignupPlanPicker from "@/components/auth/SignupPlanPicker";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { usePayment } from "@/components/payment/PaymentProvider";
 import { AUTH_INPUT_CLASS, AUTH_LABEL_CLASS } from "@/lib/auth-styles";
 import { saveSignupProfile } from "@/lib/mock-user-store";
+import { isPaymentPlanId } from "@/lib/payment-data";
 import {
   isEmailValid,
   isNameValid,
@@ -20,6 +23,8 @@ type SignupFormProps = {
 };
 
 export default function SignupForm({ onSwitchToLogin, onSignupComplete }: SignupFormProps) {
+  const { closeAuth } = useAuth();
+  const { openPayment } = usePayment();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -49,7 +54,20 @@ export default function SignupForm({ onSwitchToLogin, onSignupComplete }: Signup
 
   const handlePlanSignup = () => {
     if (!canSubmit || !selectedPlanId) return;
-    completeSignup(selectedPlanId);
+
+    saveSignupProfile(email, {
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      planId: selectedPlanId,
+    });
+
+    if (isPaymentPlanId(selectedPlanId)) {
+      closeAuth();
+      openPayment(selectedPlanId);
+      return;
+    }
+
+    onSignupComplete();
   };
 
   if (showPlans) {
