@@ -15,6 +15,7 @@ import ReceiptUploadModal from "@/components/dashboard/ReceiptUploadModal";
 import ScheduleFormModal from "@/components/dashboard/ScheduleFormModal";
 import FloatingAIChat from "@/components/ai/FloatingAIChat";
 import { useDashboardData } from "@/components/providers/DashboardDataProvider";
+import { useSearch } from "@/components/layout/SearchProvider";
 import { useAuditReviewActions } from "@/hooks/useAuditReviewActions";
 import type {
   AuditAnomaly,
@@ -31,8 +32,10 @@ export default function Dashboard() {
     calendarEvents: initialCalendarEvents,
     paymentCalendarItems,
     recentTransactions,
+    allTransactions,
   } = useDashboardData();
   const { persistReview } = useAuditReviewActions();
+  const { selectTransactionId, clearSelectTransaction } = useSearch();
 
   const [anomalies, setAnomalies] = useState(anomalyQueue);
   const [deferredAnomalies, setDeferredAnomalies] = useState(initialDeferred);
@@ -75,6 +78,15 @@ export default function Dashboard() {
     setSelectedTx(tx);
     setTxDrawerOpen(true);
   };
+
+  useEffect(() => {
+    if (!selectTransactionId) return;
+    const tx = allTransactions.find((item) => item.id === selectTransactionId);
+    if (tx) {
+      handleSelectTransaction(tx);
+    }
+    clearSelectTransaction();
+  }, [selectTransactionId, allTransactions, clearSelectTransaction]);
 
   const closeAnomalyModal = () => {
     setAnomalyModalOpen(false);

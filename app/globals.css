@@ -49,6 +49,12 @@ body {
   padding-inline: 0;
 }
 
+.sidebar:not(:hover) .sidebar-logout-btn {
+  justify-content: center;
+  gap: 0;
+  padding-inline: 0;
+}
+
 .sidebar-logo-block {
   display: flex;
   flex-direction: column;

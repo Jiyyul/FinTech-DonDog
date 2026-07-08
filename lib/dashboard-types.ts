@@ -14,7 +14,9 @@ export type AnomalyType =
   | "schedule_mismatch"
   | "amount_threshold"
   | "low_confidence"
-  | "rule_violation";
+  | "rule_violation"
+  | "duplicate_payment"
+  | "receipt_required";
 
 export type DashboardTransaction = {
   id: string;
@@ -67,11 +69,14 @@ export type PaymentCalendarItem = {
   dateLabel: string;
 };
 
+export type ActivityIcon = "dog" | "bell" | "check";
+
 export type ActivityItem = {
   id: string;
   time: string;
   message: string;
   hasDogIcon?: boolean;
+  icon?: ActivityIcon;
 };
 
 export type BudgetCategorySlice = {
@@ -105,4 +110,6 @@ export const ANOMALY_TYPE_LABELS: Record<AnomalyType, string> = {
   amount_threshold: "고액 결제",
   low_confidence: "카테고리 확인 필요",
   rule_violation: "회칙 위반 가능",
+  duplicate_payment: "중복 의심",
+  receipt_required: "영수증 필요",
 };
