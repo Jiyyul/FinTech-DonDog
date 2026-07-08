@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X, Upload } from "lucide-react";
 import Button from "@/components/common/Button";
 
@@ -8,7 +8,7 @@ type ReceiptUploadModalProps = {
   open: boolean;
   merchant: string;
   onClose: () => void;
-  onUpload: () => void;
+  onUpload: (file: File) => Promise<void>;
 };
 
 export default function ReceiptUploadModal({
@@ -18,12 +18,16 @@ export default function ReceiptUploadModal({
   onUpload,
 }: ReceiptUploadModalProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (open) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
+      setFile(null);
+      setSubmitting(false);
     }
     return () => {
       document.body.style.overflow = "";
@@ -31,6 +35,19 @@ export default function ReceiptUploadModal({
   }, [open]);
 
   if (!open) return null;
+
+  const handleSubmit = async () => {
+    if (!file) {
+      inputRef.current?.click();
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await onUpload(file);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <>
@@ -66,7 +83,7 @@ export default function ReceiptUploadModal({
             type="file"
             accept="image/*"
             className="hidden"
-            onChange={() => onUpload()}
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           />
           <button
             type="button"
@@ -74,20 +91,23 @@ export default function ReceiptUploadModal({
             className="flex w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-hairline bg-surface py-10 transition-all duration-200 hover:border-brand/30 hover:bg-brand-subtle/30"
           >
             <Upload size={28} className="text-muted" strokeWidth={1.5} />
-            <span className="text-[13px] font-medium text-ink2">이미지를 선택하거나 드래그하세요</span>
+            <span className="text-[13px] font-medium text-ink2">
+              {file ? file.name : "이미지를 선택하거나 드래그하세요"}
+            </span>
           </button>
         </div>
 
         <div className="flex gap-2.5 border-t border-hairline px-6 py-4">
-          <Button variant="secondary" className="flex-1" onClick={onClose}>
+          <Button variant="secondary" className="flex-1" onClick={onClose} disabled={submitting}>
             취소
           </Button>
           <Button
             variant="primary"
             className="flex-1"
-            onClick={() => inputRef.current?.click()}
+            onClick={handleSubmit}
+            disabled={submitting}
           >
-            업로드
+            {submitting ? "분석 및 저장 중..." : "업로드"}
           </Button>
         </div>
       </div>

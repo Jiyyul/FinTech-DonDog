@@ -21,7 +21,10 @@ export async function getBudgetTotal(): Promise<number> {
 
 export async function getBudgetCategories(): Promise<Record<string, number>> {
   const db = getSupabase();
-  const { data, error } = await db.from("budget_categories").select("category, budget_amount");
+  const { data, error } = await db
+    .from("budget_categories")
+    .select("category, budget_amount")
+    .order("category", { ascending: true });
   if (error) throw new Error(`카테고리 예산 조회 실패: ${error.message}`);
 
   const map: Record<string, number> = {};

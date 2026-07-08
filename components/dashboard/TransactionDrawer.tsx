@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import Button from "@/components/common/Button";
 import StatusBadge from "@/components/common/StatusBadge";
@@ -19,6 +20,8 @@ export default function TransactionDrawer({
   transaction,
   onClose,
 }: TransactionDrawerProps) {
+  const router = useRouter();
+
   useEffect(() => {
     if (open) {
       document.body.style.overflow = "hidden";
@@ -105,7 +108,14 @@ export default function TransactionDrawer({
 
             <div className="border-t border-hairline px-7 py-4">
               {transaction.status === "review" ? (
-                <Button variant="primary" className="w-full" onClick={onClose}>
+                <Button
+                  variant="primary"
+                  className="w-full"
+                  onClick={() => {
+                    onClose();
+                    router.push("/audit");
+                  }}
+                >
                   검토하기
                 </Button>
               ) : (

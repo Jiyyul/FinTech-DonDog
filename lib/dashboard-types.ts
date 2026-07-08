@@ -38,7 +38,6 @@ export type AuditAnomaly = {
   type: AnomalyType;
   transaction: DashboardTransaction;
   reason: string;
-  confidence: number;
   relatedSchedule?: string;
   relatedScheduleId?: string;
   ruleReference?: string;
@@ -83,12 +82,16 @@ export type MonthlyBudgetPoint = {
 export type AIReportSummary = {
   confidence: number;
   lines: string[];
-  foodMoM: number;
-  eventMoM: number;
-  opsMoM: number;
+  totalMoM: number | null;
+  foodMoM: number | null;
+  eventMoM: number | null;
+  opsMoM: number | null;
+  trafficMoM: number | null;
   overBudgetItems: string[];
   ruleViolations: number;
+  coApprovalRequired: number;
   anomalyCount: number;
+  recommendations: string[];
 };
 
 export const ANOMALY_TYPE_LABELS: Record<AnomalyType, string> = {

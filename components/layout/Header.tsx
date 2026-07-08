@@ -2,13 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell } from "lucide-react";
 import SearchBar from "@/components/common/SearchBar";
-import Avatar from "@/components/common/Avatar";
 import { useSearch } from "@/components/layout/SearchProvider";
 import { useDashboardData } from "@/components/providers/DashboardDataProvider";
 import { getNavItemByPath } from "@/lib/navigation";
-import { CURRENT_ORGANIZATION, CURRENT_USER } from "@/lib/mock-data";
+import { CURRENT_ORGANIZATION } from "@/lib/mock-data";
 import { formatCurrency } from "@/lib/format";
 import { matchesSearch } from "@/lib/search-utils";
 
@@ -104,23 +102,6 @@ export default function Header() {
             </div>
           )}
         </div>
-
-        <button
-          type="button"
-          className="ui-icon-btn relative border border-hairline bg-card shadow-card"
-          aria-label="알림"
-        >
-          <Bell size={20} className="text-ink2" strokeWidth={1.5} />
-          <span className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-danger ring-2 ring-card" />
-        </button>
-
-        <button
-          type="button"
-          className="shrink-0 rounded-full transition-transform duration-200 ease-premium hover:scale-[1.03]"
-          aria-label="프로필"
-        >
-          <Avatar initials={CURRENT_USER.initials} size="lg" />
-        </button>
       </div>
     </header>
   );

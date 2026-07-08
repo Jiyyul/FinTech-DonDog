@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { X } from "lucide-react";
 import Button from "@/components/common/Button";
-import Badge from "@/components/common/Badge";
 import AIMessage from "@/components/common/AIMessage";
 import StatusBadge from "@/components/common/StatusBadge";
 import { formatCurrency } from "@/lib/format";
@@ -100,9 +99,6 @@ export default function AnomalyReviewModal({
             </div>
             <div className="flex flex-wrap gap-2">
               <StatusBadge status={tx.status} />
-              <Badge variant="accent" size="sm">
-                신뢰도 {anomaly.confidence}%
-              </Badge>
             </div>
           </div>
 
@@ -126,9 +122,7 @@ export default function AnomalyReviewModal({
           </div>
 
           <div className="mt-4 rounded-2xl bg-surface p-4 ring-1 ring-hairline">
-            <AIMessage>
-              {tx.category}로 분류했어요. 신뢰도 {anomaly.confidence}%
-            </AIMessage>
+            <AIMessage>{tx.category}로 분류했어요.</AIMessage>
           </div>
 
           {isLowConfidence && onCategoryChange && (

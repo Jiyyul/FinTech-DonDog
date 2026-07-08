@@ -10,6 +10,8 @@ import {
 } from "@/lib/actions/anomaly-actions";
 import { updateTransactionCategoryAction } from "@/lib/actions/classification-actions";
 import { deleteScheduleAction, saveScheduleAction } from "@/lib/actions/schedule-actions";
+import { saveReceiptAction } from "@/lib/actions/receipt-actions";
+import { parseReceipt } from "@/lib/receipts/receipt-parser";
 import HeroBudgetCard from "@/components/dashboard/HeroBudgetCard";
 import AuditCard from "@/components/dashboard/AuditCard";
 import CalendarCard from "@/components/dashboard/CalendarCard";
@@ -185,13 +187,20 @@ export default function Dashboard() {
     router.refresh();
   };
 
-  const handleReceiptUpload = () => {
+  const handleReceiptUpload = async (file: File) => {
     if (!receiptTx) return;
+    const parsed = await parseReceipt(file);
+    await saveReceiptAction(
+      parsed,
+      { name: file.name, type: file.type, size: file.size },
+      receiptTx.id
+    );
     setTransactions((prev) =>
       prev.map((t) => (t.id === receiptTx.id ? { ...t, hasReceipt: true } : t))
     );
     setReceiptModalOpen(false);
     setReceiptTx(null);
+    router.refresh();
   };
 
   return (
