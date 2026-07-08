@@ -24,7 +24,7 @@ export default function LandingLoggedInNav({
   const handleLogout = () => {
     clearMockSession();
     onNavigate?.();
-    router.push("/");
+    router.push("/landing");
   };
 
   const actionClass = stacked ? "w-full justify-center" : "";

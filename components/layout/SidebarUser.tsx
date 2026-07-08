@@ -16,7 +16,7 @@ export default function SidebarUser({ onAddGroup }: SidebarUserProps) {
 
   const handleLogout = () => {
     clearMockSession();
-    router.push("/");
+    router.push("/landing");
   };
 
   const displayName = session?.user.name ?? "게스트";

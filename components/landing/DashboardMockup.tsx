@@ -1,11 +1,8 @@
 "use client";
 
-import HeroBudgetCard from "@/components/dashboard/HeroBudgetCard";
-import AuditCard from "@/components/dashboard/AuditCard";
-import BudgetTrendCard from "@/components/dashboard/BudgetTrendCard";
-import { ANOMALY_QUEUE } from "@/lib/dashboard-mock-data";
-
-function noop() {}
+import HeroBudgetCardPreview from "@/components/landing/mockup/HeroBudgetCardPreview";
+import AuditCardPreview from "@/components/landing/mockup/AuditCardPreview";
+import BudgetTrendCardPreview from "@/components/landing/mockup/BudgetTrendCardPreview";
 
 export default function DashboardMockup() {
   return (
@@ -23,13 +20,8 @@ export default function DashboardMockup() {
           </div>
           <div className="pointer-events-none overflow-hidden bg-dashbg p-3 sm:p-4">
             <div className="grid grid-cols-[1.2fr_0.8fr] gap-3">
-              <HeroBudgetCard preview />
-              <AuditCard
-                preview
-                anomalies={ANOMALY_QUEUE}
-                deferredAnomalies={[]}
-                onReview={noop}
-              />
+              <HeroBudgetCardPreview />
+              <AuditCardPreview />
             </div>
           </div>
         </div>
@@ -41,7 +33,7 @@ export default function DashboardMockup() {
           <div className="h-5 bg-ink" />
           <div className="pointer-events-none flex min-h-[210px] items-center justify-center overflow-hidden bg-dashbg p-2.5">
             <div className="w-full">
-              <BudgetTrendCard preview />
+              <BudgetTrendCardPreview />
             </div>
           </div>
         </div>
