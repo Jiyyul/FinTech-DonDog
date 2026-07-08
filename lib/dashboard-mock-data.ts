@@ -243,6 +243,15 @@ export const MONTHLY_BUDGET_TREND: MonthlyBudgetPoint[] = enrichTrendWithMoM([
   { month: "6월", used: 860_000, budget: 1_200_000, balance: 340_000 },
 ]);
 
+export const EMPTY_MONTHLY_BUDGET_TREND: MonthlyBudgetPoint[] = enrichTrendWithMoM([
+  { month: "1월", used: 0, budget: 0, balance: 0 },
+  { month: "2월", used: 0, budget: 0, balance: 0 },
+  { month: "3월", used: 0, budget: 0, balance: 0 },
+  { month: "4월", used: 0, budget: 0, balance: 0 },
+  { month: "5월", used: 0, budget: 0, balance: 0 },
+  { month: "6월", used: 0, budget: 0, balance: 0 },
+]);
+
 export const AI_REPORT_SUMMARY: AIReportSummary = {
   confidence: 98,
   foodMoM: -4.2,

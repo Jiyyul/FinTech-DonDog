@@ -14,6 +14,7 @@ type AuditCardProps = {
   onReview: (anomaly: AuditAnomaly) => void;
   onReviewDeferred?: (anomaly: AuditAnomaly) => void;
   className?: string;
+  preview?: boolean;
 };
 
 export default function AuditCard({
@@ -22,6 +23,7 @@ export default function AuditCard({
   onReview,
   onReviewDeferred,
   className = "",
+  preview = false,
 }: AuditCardProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const totalCount = anomalies.length + deferredAnomalies.length;
@@ -31,7 +33,7 @@ export default function AuditCard({
     setCurrentIndex((index) => Math.min(index, Math.max(0, anomalies.length - 1)));
   }, [anomalies.length]);
 
-  const showArrows = anomalies.length > 1;
+  const showArrows = !preview && anomalies.length > 1;
 
   const goToPrevious = () => {
     setCurrentIndex((index) => (index === 0 ? anomalies.length - 1 : index - 1));
@@ -42,8 +44,12 @@ export default function AuditCard({
   };
 
   return (
-    <Card className={`flex min-w-0 flex-col ${className}`}>
-      <div className="mb-5 flex shrink-0 items-start justify-between gap-3">
+    <Card
+      className={`flex min-w-0 flex-col ${
+        preview ? "!p-4 hover:scale-100 hover:shadow-card" : ""
+      } ${className}`}
+    >
+      <div className={`flex shrink-0 items-start justify-between gap-3 ${preview ? "mb-3" : "mb-5"}`}>
         <div className="flex items-center gap-2.5">
           <span
             className="flex h-8 w-8 items-center justify-center rounded-xl bg-accent-subtle text-sm ring-1 ring-accent/20"
@@ -60,7 +66,7 @@ export default function AuditCard({
         )}
       </div>
 
-      {deferredAnomalies.length > 0 && (
+      {!preview && deferredAnomalies.length > 0 && (
         <div className="mb-4 shrink-0 rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3 ring-1 ring-warning/10">
           <div className="flex items-center gap-2">
             <Clock size={15} className="shrink-0 text-warning" strokeWidth={1.75} />
@@ -94,13 +100,15 @@ export default function AuditCard({
         <p className="dash-section-label normal-case tracking-normal">
           확인 필요한 거래
         </p>
-        <p className="mt-1.5 dash-metric-xl">
+        <p className={`mt-1.5 ${preview ? "text-[1.75rem] font-bold tracking-title-tight text-navy tabular-nums" : "dash-metric-xl"}`}>
           {anomalies.length}
-          <span className="ml-1 text-[18px] font-medium text-muted">건</span>
+          <span className={`ml-1 font-medium text-muted ${preview ? "text-[15px]" : "text-[18px]"}`}>
+            건
+          </span>
         </p>
 
         {current ? (
-          <div className="mt-5 flex items-center gap-2">
+          <div className={`mt-5 flex items-center gap-2 ${preview ? "mt-4" : ""}`}>
             {showArrows && (
               <button
                 type="button"
@@ -111,12 +119,18 @@ export default function AuditCard({
                 <ChevronLeft size={15} strokeWidth={1.5} />
               </button>
             )}
-            <div className="dash-inner-surface min-w-0 flex-1">
-              <p className="text-[14px] font-medium text-ink">{current.transaction.merchant}</p>
-              <p className="mt-1.5 text-[22px] font-semibold tracking-title-tight text-navy tabular-nums">
+            <div className="dash-inner-surface min-w-0 flex-1 text-left">
+              <p className="text-[14px] font-medium leading-snug text-ink">
+                {current.transaction.merchant}
+              </p>
+              <p
+                className={`mt-1.5 font-semibold tracking-title-tight text-navy tabular-nums whitespace-nowrap ${
+                  preview ? "text-left text-[1.25rem]" : "text-[22px]"
+                }`}
+              >
                 {formatCurrency(current.transaction.amount)}
               </p>
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="mt-2.5 flex flex-wrap gap-1.5">
                 <Badge variant="info" size="sm">
                   {current.transaction.category}
                 </Badge>
@@ -147,7 +161,7 @@ export default function AuditCard({
         )}
       </div>
 
-      {current && (
+      {current && !preview && (
         <Button
           variant="primary"
           className="mt-5 w-full shrink-0"

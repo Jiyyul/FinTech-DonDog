@@ -4,9 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import SearchBar from "@/components/common/SearchBar";
 import { useSearch } from "@/components/layout/SearchProvider";
+import { useMockUser } from "@/components/providers/MockUserProvider";
 import { getNavItemByPath } from "@/lib/navigation";
 import { ALL_TRANSACTIONS } from "@/lib/dashboard-mock-data";
-import { CURRENT_ORGANIZATION } from "@/lib/mock-data";
 import { formatCurrency } from "@/lib/format";
 import { matchesSearch } from "@/lib/search-utils";
 
@@ -14,17 +14,20 @@ export default function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const { query, setQuery, requestSelectTransaction } = useSearch();
+  const { currentOrganization, hasEmptyData } = useMockUser();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
 
   const currentNav = getNavItemByPath(pathname);
   const pageTitle = currentNav?.label ?? "Dashboard";
-  const isDashboard = pathname === "/";
+  const isDashboard = pathname === "/dashboard";
+
+  const searchTransactions = hasEmptyData ? [] : ALL_TRANSACTIONS;
 
   const results = useMemo(() => {
     if (!query.trim()) return [];
-    return ALL_TRANSACTIONS.filter((tx) => matchesSearch(tx, query)).slice(0, 6);
-  }, [query]);
+    return searchTransactions.filter((tx) => matchesSearch(tx, query)).slice(0, 6);
+  }, [query, searchTransactions]);
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -40,7 +43,7 @@ export default function Header() {
   const handleSelectResult = (transactionId: string) => {
     requestSelectTransaction(transactionId);
     setDropdownOpen(false);
-    if (!isDashboard) router.push("/");
+    if (!isDashboard) router.push("/dashboard");
   };
 
   return (
@@ -51,7 +54,9 @@ export default function Header() {
     >
       <div className="min-w-0 flex-1 basis-[12rem]">
         <h1 className="ui-page-title">{pageTitle}</h1>
-        <p className="ui-page-subtitle">{CURRENT_ORGANIZATION.semester}</p>
+        <p className="ui-page-subtitle">
+          {currentOrganization?.semester ?? "모임을 선택하거나 새로 만들어보세요"}
+        </p>
       </div>
 
       <div ref={searchRef} className="relative w-full min-w-0 max-w-[320px] shrink-0 sm:w-auto">

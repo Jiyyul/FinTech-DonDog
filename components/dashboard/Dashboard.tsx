@@ -14,7 +14,9 @@ import ExceptionModal from "@/components/dashboard/ExceptionModal";
 import ReceiptUploadModal from "@/components/dashboard/ReceiptUploadModal";
 import ScheduleFormModal from "@/components/dashboard/ScheduleFormModal";
 import FloatingAIChat from "@/components/ai/FloatingAIChat";
+import EmptyDashboard from "@/components/dashboard/EmptyDashboard";
 import { useSearch } from "@/components/layout/SearchProvider";
+import { useMockUser } from "@/components/providers/MockUserProvider";
 import {
   ALL_TRANSACTIONS,
   ANOMALY_QUEUE,
@@ -33,12 +35,21 @@ import type {
 } from "@/lib/dashboard-types";
 
 export default function Dashboard() {
+  const { isEmptyDashboard, hasEmptyData, openAddGroupModal, currentOrganization } =
+    useMockUser();
   const { query, selectTransactionId, clearSelectTransaction } = useSearch();
-  const [anomalies, setAnomalies] = useState(ANOMALY_QUEUE);
+
+  const [anomalies, setAnomalies] = useState(() => (hasEmptyData ? [] : ANOMALY_QUEUE));
   const [deferredAnomalies, setDeferredAnomalies] = useState<AuditAnomaly[]>([]);
-  const [transactions, setTransactions] = useState(RECENT_TRANSACTIONS);
-  const [calendarEvents, setCalendarEvents] = useState(CALENDAR_EVENTS);
-  const [activities, setActivities] = useState<ActivityItem[]>(ACTIVITY_FEED);
+  const [transactions, setTransactions] = useState(() =>
+    hasEmptyData ? [] : RECENT_TRANSACTIONS
+  );
+  const [calendarEvents, setCalendarEvents] = useState(() =>
+    hasEmptyData ? [] : CALENDAR_EVENTS
+  );
+  const [activities, setActivities] = useState<ActivityItem[]>(() =>
+    hasEmptyData ? [] : ACTIVITY_FEED
+  );
 
   const logActivity = (
     message: string,
@@ -219,11 +230,17 @@ export default function Dashboard() {
     setReceiptTx(null);
   };
 
+  if (isEmptyDashboard) {
+    return <EmptyDashboard onCreateClub={openAddGroupModal} />;
+  }
+
+  const semester = currentOrganization?.semester ?? "2026년 1학기";
+
   return (
     <div className="min-w-0 space-y-10">
       <section className="dash-row-duo">
         <div className="dash-grid-cell min-w-0">
-          <HeroBudgetCard />
+          <HeroBudgetCard emptyData={hasEmptyData} semester={semester} />
         </div>
         <div className="dash-grid-cell min-w-0">
           <AuditCard
@@ -253,10 +270,10 @@ export default function Dashboard() {
           />
         </div>
         <div className="dash-grid-cell min-w-0">
-          <BudgetTrendCard className="h-full min-h-[360px]" />
+          <BudgetTrendCard className="h-full min-h-[360px]" emptyData={hasEmptyData} />
         </div>
         <div className="dash-grid-cell min-w-0">
-          <AIReportCard className="h-full min-h-[360px]" />
+          <AIReportCard className="h-full min-h-[360px]" emptyData={hasEmptyData} />
         </div>
       </section>
 

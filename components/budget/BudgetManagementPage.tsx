@@ -129,7 +129,7 @@ export default function BudgetManagementPage() {
   return (
     <div className="mx-auto max-w-2xl pb-10">
       <Link
-        href="/"
+        href="/dashboard"
         className="mb-6 inline-flex items-center gap-2 text-[14px] font-medium text-ink2 transition-colors duration-200 hover:text-navy"
       >
         <ArrowLeft size={18} strokeWidth={1.75} />
