@@ -12,6 +12,7 @@ type RecentTransactionsProps = {
   transactions: DashboardTransaction[];
   onSelect: (transaction: DashboardTransaction) => void;
   onAddReceipt: (transaction: DashboardTransaction) => void;
+  onViewReceipt: (transaction: DashboardTransaction) => void;
   className?: string;
 };
 
@@ -19,10 +20,12 @@ function TransactionsTable({
   rows,
   onSelect,
   onAddReceipt,
+  onViewReceipt,
 }: {
   rows: DashboardTransaction[];
   onSelect: (transaction: DashboardTransaction) => void;
   onAddReceipt: (transaction: DashboardTransaction) => void;
+  onViewReceipt: (transaction: DashboardTransaction) => void;
 }) {
   return (
     <table className="w-full table-fixed border-separate border-spacing-0">
@@ -57,7 +60,11 @@ function TransactionsTable({
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onAddReceipt(tx);
+                  if (tx.hasReceipt) {
+                    onViewReceipt(tx);
+                  } else {
+                    onAddReceipt(tx);
+                  }
                 }}
                 className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all duration-200 ${
                   tx.hasReceipt
@@ -80,6 +87,7 @@ export default function RecentTransactions({
   transactions,
   onSelect,
   onAddReceipt,
+  onViewReceipt,
   className = "",
 }: RecentTransactionsProps) {
   const { allTransactions } = useDashboardData();
@@ -120,6 +128,7 @@ export default function RecentTransactions({
             rows={transactions}
             onSelect={onSelect}
             onAddReceipt={onAddReceipt}
+            onViewReceipt={onViewReceipt}
           />
         </div>
       </Card>
@@ -163,6 +172,10 @@ export default function RecentTransactions({
                 onAddReceipt={(tx) => {
                   setViewAllOpen(false);
                   onAddReceipt(tx);
+                }}
+                onViewReceipt={(tx) => {
+                  setViewAllOpen(false);
+                  onViewReceipt(tx);
                 }}
               />
             </div>

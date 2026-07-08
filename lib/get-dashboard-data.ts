@@ -29,8 +29,9 @@ import {
 } from "@/lib/payment-repository";
 import { getBudgetTotal } from "@/lib/budget-repository";
 import { getReviewStatusMap } from "@/lib/review-repository";
-import { getLinkedPaymentIds } from "@/lib/receipt-repository";
+import { getLinkedPaymentIds, getReceipts } from "@/lib/receipt-repository";
 import { getSchedules } from "@/lib/schedule-repository";
+import type { Receipt } from "@/lib/receipts/receipt-types";
 
 export type DashboardData = {
   budgetTotal: number;
@@ -46,6 +47,7 @@ export type DashboardData = {
   anomalyQueue: AuditAnomaly[];
   recentTransactions: DashboardTransaction[];
   allTransactions: DashboardTransaction[];
+  receipts: Receipt[];
   aiReportSummary: AIReportSummary;
   activityFeed: ActivityItem[];
   monthlyBudgetTrend: MonthlyBudgetPoint[];
@@ -56,16 +58,25 @@ export type DashboardData = {
 };
 
 export async function getDashboardData(): Promise<DashboardData> {
-  const [payments, classifications, budgetTotal, reviewStatusMap, linkedPaymentIds, balances, calendarEvents] =
-    await Promise.all([
-      getAllPayments(),
-      getClassifications(),
-      getBudgetTotal(),
-      getReviewStatusMap(),
-      getLinkedPaymentIds(),
-      getAccountBalances(),
-      getSchedules(),
-    ]);
+  const [
+    payments,
+    classifications,
+    budgetTotal,
+    reviewStatusMap,
+    linkedPaymentIds,
+    balances,
+    calendarEvents,
+    receipts,
+  ] = await Promise.all([
+    getAllPayments(),
+    getClassifications(),
+    getBudgetTotal(),
+    getReviewStatusMap(),
+    getLinkedPaymentIds(),
+    getAccountBalances(),
+    getSchedules(),
+    getReceipts(),
+  ]);
 
   const classificationMap = buildClassificationMap(classifications);
   const { initial, current } = balances;
@@ -105,6 +116,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     anomalyQueue: anomalies,
     recentTransactions: transactions.slice(0, 4),
     allTransactions: allTx,
+    receipts,
     aiReportSummary: report,
     activityFeed: [
       ...activity,

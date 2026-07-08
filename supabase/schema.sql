@@ -57,9 +57,11 @@ create table if not exists receipts (
   file_name text,
   file_type text,
   file_size integer,
+  image_data_url text,
   linked_payment_id bigint references payments (id) on delete set null,
   created_at timestamptz not null default now()
 );
+alter table receipts add column if not exists image_data_url text;
 
 create table if not exists budget_categories (
   category text primary key,
@@ -83,7 +85,18 @@ create table if not exists budget_history (
   label text
 );
 
--- RLS를 켜지 않았으므로(위 TODO 참고) anon 키가 테이블에 접근하려면 명시적 GRANT가 필요하다.
+-- Supabase 신규 프로젝트는 테이블 생성 시 RLS가 기본으로 켜져 있다. 로그인 미도입 단계에서는
+-- 위 TODO대로 꺼둔다 (로그인 도입 시 아래 disable 대신 테이블별 RLS 정책을 추가해야 한다).
+alter table payments disable row level security;
+alter table payment_classifications disable row level security;
+alter table transaction_reviews disable row level security;
+alter table schedules disable row level security;
+alter table receipts disable row level security;
+alter table budget_categories disable row level security;
+alter table budget_total disable row level security;
+alter table budget_history disable row level security;
+
+-- RLS를 꺼도 anon 키가 테이블에 접근하려면 명시적 GRANT가 필요하다.
 -- 이미 실행했다면 다시 실행해도 안전하다(권한 재부여일 뿐 데이터에는 영향 없음).
 grant usage on schema public to anon, authenticated;
 grant select, insert, update, delete on all tables in schema public to anon, authenticated;

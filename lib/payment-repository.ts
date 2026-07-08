@@ -54,6 +54,36 @@ export async function seedPaymentsFromJson(rows: PaymentSeedRow[]): Promise<numb
   return insertRows.length;
 }
 
+/**
+ * 영수증만 있고 연결할 기존 거래가 없을 때, 새 거래(payment) 행을 만든다.
+ * balance_after는 정확한 시계열 재계산 대신 현재 잔액 기준 근사치를 사용한다 (mock 데이터 한계).
+ */
+export async function createPayment(data: {
+  merchant: string;
+  amount: number;
+  transactedAt: string;
+  paymentMethod?: string;
+}): Promise<PaymentRecord> {
+  const db = getSupabase();
+  const { current } = await getAccountBalances();
+  const balanceAfter = current - data.amount;
+
+  const { data: inserted, error } = await db
+    .from("payments")
+    .insert({
+      merchant: data.merchant,
+      amount: data.amount,
+      balance_after: balanceAfter,
+      transacted_at: data.transactedAt,
+      payment_method: data.paymentMethod ?? "학생회 체크카드",
+    })
+    .select("id, merchant, amount, balance_after, transacted_at, payment_method")
+    .single();
+
+  if (error) throw new Error(`거래 생성 실패: ${error.message}`);
+  return mapPayment(inserted as PaymentRow);
+}
+
 export async function getAllPayments(): Promise<PaymentRecord[]> {
   const db = getSupabase();
   const { data, error } = await db

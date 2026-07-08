@@ -20,7 +20,6 @@ import ActivityFeedCard from "@/components/dashboard/ActivityFeedCard";
 import AnomalyReviewModal from "@/components/dashboard/AnomalyReviewModal";
 import TransactionDrawer from "@/components/dashboard/TransactionDrawer";
 import ExceptionModal from "@/components/dashboard/ExceptionModal";
-import ReceiptUploadModal from "@/components/dashboard/ReceiptUploadModal";
 import ScheduleFormModal from "@/components/dashboard/ScheduleFormModal";
 import FloatingAIChat from "@/components/ai/FloatingAIChat";
 import { useDashboardData } from "@/components/providers/DashboardDataProvider";
@@ -36,11 +35,10 @@ export default function Dashboard() {
   const {
     anomalyQueue,
     calendarEvents: initialCalendarEvents,
-    recentTransactions,
+    recentTransactions: transactions,
   } = useDashboardData();
   const [anomalies, setAnomalies] = useState(anomalyQueue);
   const [deferredAnomalies, setDeferredAnomalies] = useState<AuditAnomaly[]>([]);
-  const [transactions, setTransactions] = useState(recentTransactions);
   const [calendarEvents, setCalendarEvents] = useState(initialCalendarEvents);
 
   const [anomalyModalOpen, setAnomalyModalOpen] = useState(false);
@@ -49,9 +47,6 @@ export default function Dashboard() {
 
   const [txDrawerOpen, setTxDrawerOpen] = useState(false);
   const [selectedTx, setSelectedTx] = useState<DashboardTransaction | null>(null);
-
-  const [receiptModalOpen, setReceiptModalOpen] = useState(false);
-  const [receiptTx, setReceiptTx] = useState<DashboardTransaction | null>(null);
 
   const [scheduleFormOpen, setScheduleFormOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
@@ -185,14 +180,6 @@ export default function Dashboard() {
     router.refresh();
   };
 
-  const handleReceiptUpload = () => {
-    if (!receiptTx) return;
-    setTransactions((prev) =>
-      prev.map((t) => (t.id === receiptTx.id ? { ...t, hasReceipt: true } : t))
-    );
-    setReceiptModalOpen(false);
-    setReceiptTx(null);
-  };
 
   return (
     <div className="min-w-0 space-y-10">
@@ -240,10 +227,8 @@ export default function Dashboard() {
           <RecentTransactions
             transactions={transactions}
             onSelect={handleSelectTransaction}
-            onAddReceipt={(tx) => {
-              setReceiptTx(tx);
-              setReceiptModalOpen(true);
-            }}
+            onAddReceipt={(tx) => router.push(`/receipts?transactionId=${tx.id}`)}
+            onViewReceipt={() => router.push("/receipts")}
           />
         </div>
         <div className="dash-grid-cell min-w-0">
@@ -277,16 +262,6 @@ export default function Dashboard() {
           setTxDrawerOpen(false);
           setSelectedTx(null);
         }}
-      />
-
-      <ReceiptUploadModal
-        open={receiptModalOpen}
-        merchant={receiptTx?.merchant ?? ""}
-        onClose={() => {
-          setReceiptModalOpen(false);
-          setReceiptTx(null);
-        }}
-        onUpload={handleReceiptUpload}
       />
 
       <ScheduleFormModal

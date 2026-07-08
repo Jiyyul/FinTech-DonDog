@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Paperclip } from "lucide-react";
 import Card from "@/components/common/Card";
 import StatusBadge from "@/components/common/StatusBadge";
 import TransactionDrawer from "@/components/dashboard/TransactionDrawer";
@@ -11,6 +12,7 @@ import { formatCurrency } from "@/lib/format";
 import type { DashboardTransaction } from "@/lib/dashboard-types";
 
 export default function TransactionsPage() {
+  const router = useRouter();
   const [selected, setSelected] = useState<DashboardTransaction | null>(null);
   const { allTransactions: transactions, currentAccountBalance } = useDashboardData();
   const totalExpense = transactions.reduce((s, t) => s + t.amount, 0);
@@ -58,7 +60,7 @@ export default function TransactionsPage() {
           <table className="w-full min-w-[640px] table-fixed border-separate border-spacing-0">
             <thead>
               <tr className="text-left">
-                {["결제명", "AI 분류", "날짜", "금액", "잔액", "상태"].map((h) => (
+                {["결제명", "AI 분류", "날짜", "금액", "잔액", "상태", "영수증"].map((h) => (
                   <th key={h} className="dash-table-head px-2 first:pl-0 last:pr-0">
                     {h}
                   </th>
@@ -83,8 +85,27 @@ export default function TransactionsPage() {
                   <td className="truncate px-2 text-right tabular-nums text-ink2">
                     {formatCurrency(tx.balance)}
                   </td>
-                  <td className="px-2 text-right last:pr-0">
+                  <td className="px-2 text-right">
                     <StatusBadge status={tx.status} />
+                  </td>
+                  <td className="px-2 text-right last:pr-0">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(
+                          tx.hasReceipt ? "/receipts" : `/receipts?transactionId=${tx.id}`
+                        );
+                      }}
+                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all duration-200 ${
+                        tx.hasReceipt
+                          ? "bg-success/10 text-success"
+                          : "bg-surface text-ink2 hover:ring-1 hover:ring-hairline hover:text-ink"
+                      }`}
+                    >
+                      <Paperclip size={11} strokeWidth={1.75} />
+                      {tx.hasReceipt ? "첨부됨" : "영수증 추가"}
+                    </button>
                   </td>
                 </tr>
               ))}
