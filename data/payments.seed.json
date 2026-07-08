@@ -14,15 +14,15 @@
   { "merchant": "학생회관 대관", "amount": 150000, "transacted_at": "2026-03-15" },
   { "merchant": "샤브로", "amount": 38000, "transacted_at": "2026-03-18" },
   { "merchant": "프린트카페", "amount": 8500, "transacted_at": "2026-03-22" },
-  { "merchant": "맘스터치", "amount": 22000, "transacted_at": "2026-03-26" },
+  { "merchant": "주점 단체행사", "amount": 210000, "transacted_at": "2026-03-26", "category": "식비", "confidence": 90 },
 
-  { "merchant": "해커톤 등록비", "amount": 200000, "transacted_at": "2026-04-01" },
+  { "merchant": "노래방 단체회식", "amount": 185000, "transacted_at": "2026-04-01", "category": "식비", "confidence": 88 },
   { "merchant": "스타벅스", "amount": 16800, "transacted_at": "2026-04-04" },
   { "merchant": "카카오택시", "amount": 13200, "transacted_at": "2026-04-08" },
   { "merchant": "중화반점", "amount": 62000, "transacted_at": "2026-04-11" },
   { "merchant": "노션", "amount": 12000, "transacted_at": "2026-04-15" },
   { "merchant": "뺵다방", "amount": 4800, "transacted_at": "2026-04-19" },
-  { "merchant": "상품권", "amount": 100000, "transacted_at": "2026-04-22" },
+  { "merchant": "길음식 노점", "amount": 95000, "transacted_at": "2026-04-22", "category": "기타", "confidence": 62 },
   { "merchant": "프린트카페", "amount": 24000, "transacted_at": "2026-04-26" },
 
   { "merchant": "신라호텔", "amount": 280000, "transacted_at": "2026-05-03" },
@@ -30,26 +30,28 @@
   { "merchant": "카카오택시", "amount": 10800, "transacted_at": "2026-05-10" },
   { "merchant": "AWS 클라우드", "amount": 22000, "transacted_at": "2026-05-14" },
   { "merchant": "샤브로", "amount": 41000, "transacted_at": "2026-05-17" },
-  { "merchant": "CU편의점", "amount": 7600, "transacted_at": "2026-05-21" },
+  { "merchant": "해외송금 UNKNOWN", "amount": 88000, "transacted_at": "2026-05-21", "category": "기타", "confidence": 48 },
   { "merchant": "학생회관 대관", "amount": 80000, "transacted_at": "2026-05-24" },
   { "merchant": "교촌치킨", "amount": 32000, "transacted_at": "2026-05-28" },
 
-  { "merchant": "MT 펜션", "amount": 420000, "transacted_at": "2026-06-02" },
+  { "merchant": "전자기기 마트", "amount": 465000, "transacted_at": "2026-06-02" },
   { "merchant": "스타벅스", "amount": 17200, "transacted_at": "2026-06-05" },
   { "merchant": "프린트카페", "amount": 16000, "transacted_at": "2026-06-08" },
   { "merchant": "카카오택시", "amount": 14500, "transacted_at": "2026-06-11" },
   { "merchant": "중화반점", "amount": 55000, "transacted_at": "2026-06-15" },
   { "merchant": "AWS 클라우드", "amount": 22000, "transacted_at": "2026-06-18" },
   { "merchant": "뺵다방", "amount": 5100, "transacted_at": "2026-06-22" },
-  { "merchant": "주차장", "amount": 8000, "transacted_at": "2026-06-26" },
+  { "merchant": "알 수 없는 해외결제", "amount": 72000, "transacted_at": "2026-06-26", "category": "기타", "confidence": 55 },
 
   { "merchant": "스타벅스", "amount": 15800, "transacted_at": "2026-07-01" },
   { "merchant": "뺵다방", "amount": 4500, "transacted_at": "2026-07-04" },
   { "merchant": "중화반점", "amount": 68000, "transacted_at": "2026-07-07" },
-  { "merchant": "샤브로", "amount": 42000, "transacted_at": "2026-07-10" },
+  { "merchant": "컨벤션센터 대관", "amount": 380000, "transacted_at": "2026-07-10" },
   { "merchant": "카카오택시", "amount": 12500, "transacted_at": "2026-07-13" },
-  { "merchant": "신라호텔", "amount": 350000, "transacted_at": "2026-07-16" },
+  { "merchant": "신라호텔", "amount": 350000, "transacted_at": "2026-07-18" },
   { "merchant": "AWS 클라우드", "amount": 22000, "transacted_at": "2026-07-19" },
   { "merchant": "프린트카페", "amount": 18000, "transacted_at": "2026-07-22" },
   { "merchant": "MT 펜션", "amount": 850000, "transacted_at": "2026-07-25" }
 ]
+
+

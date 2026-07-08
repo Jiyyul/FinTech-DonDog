@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import Card from "@/components/common/Card";
-import type { CalendarEvent } from "@/lib/dashboard-types";
+import type { CalendarEvent, PaymentCalendarItem } from "@/lib/dashboard-types";
+import { formatCurrency } from "@/lib/format";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -17,6 +18,7 @@ function getFirstDayOfMonth(year: number, month: number) {
 
 type CalendarCardProps = {
   events: CalendarEvent[];
+  payments?: PaymentCalendarItem[];
   variant?: "default" | "compact";
   className?: string;
   onAddEvent: () => void;
@@ -25,6 +27,7 @@ type CalendarCardProps = {
 
 export default function CalendarCard({
   events,
+  payments = [],
   variant = "default",
   className = "",
   onAddEvent,
@@ -52,6 +55,11 @@ export default function CalendarCard({
   const eventsForDate = (date: number) =>
     events.filter(
       (e) => e.date === date && e.month === viewMonth + 1 && e.year === viewYear
+    );
+
+  const paymentsForDate = (date: number) =>
+    payments.filter(
+      (p) => p.date === date && p.month === viewMonth + 1 && p.year === viewYear
     );
 
   const shiftMonth = (delta: number) => {
@@ -95,6 +103,17 @@ export default function CalendarCard({
         </div>
       </div>
 
+      <div className="mb-2 flex flex-wrap gap-3 text-[10px] text-muted">
+        <span className="flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-brand" />
+          결제
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-navy" />
+          일정
+        </span>
+      </div>
+
       <div className="grid min-h-0 flex-1 grid-cols-7 gap-1 text-center">
         {WEEKDAYS.map((day) => (
           <span
@@ -112,8 +131,10 @@ export default function CalendarCard({
 
           const isToday = date === todayDate;
           const dayEvents = eventsForDate(date);
+          const dayPayments = paymentsForDate(date);
           const isHovered = hoveredDate === date;
           const hasEvents = dayEvents.length > 0;
+          const hasPayments = dayPayments.length > 0;
           const eventColor = dayEvents[0]?.color;
           const col = idx % 7;
           const tooltipAlign =
@@ -137,11 +158,9 @@ export default function CalendarCard({
                     onSelectEvent(dayEvents[0]);
                   }
                 }}
-                className={`flex w-full items-center justify-center rounded-lg font-medium transition-all duration-200 ease-premium ${
+                className={`relative flex w-full flex-col items-center justify-center rounded-lg font-medium transition-all duration-200 ease-premium ${
                   isCompact ? "h-7 text-[12px]" : "h-8 text-[13px]"
-                } ${
-                  hasEvents ? "cursor-pointer" : ""
-                } ${
+                } ${hasEvents ? "cursor-pointer" : ""} ${
                   isToday
                     ? "bg-navy font-semibold text-inverse shadow-sm"
                     : isHovered
@@ -159,12 +178,30 @@ export default function CalendarCard({
                 ) : (
                   date
                 )}
+                {hasPayments && (
+                  <span
+                    className={`absolute bottom-0.5 h-1 w-1 rounded-full ${
+                      isToday ? "bg-inverse" : "bg-brand"
+                    }`}
+                    aria-hidden
+                  />
+                )}
               </button>
 
-              {isHovered && dayEvents.length > 0 && (
+              {isHovered && (dayEvents.length > 0 || dayPayments.length > 0) && (
                 <div
-                  className={`absolute top-full z-20 mt-1.5 w-max max-w-[11rem] rounded-xl border border-hairline bg-card p-2 shadow-card-hover ${tooltipAlign}`}
+                  className={`absolute top-full z-20 mt-1.5 w-max max-w-[14rem] rounded-xl border border-hairline bg-card p-2 shadow-card-hover ${tooltipAlign}`}
                 >
+                  {dayPayments.map((payment) => (
+                    <div
+                      key={payment.id}
+                      className="mb-1 block w-full whitespace-nowrap rounded-md px-2 py-1 text-left text-[10px] font-medium text-ink2 last:mb-0"
+                    >
+                      <span className="text-brand">●</span> {payment.merchant}{" "}
+                      {formatCurrency(payment.amount)}
+                      <span className="text-muted"> · {payment.category}</span>
+                    </div>
+                  ))}
                   {dayEvents.map((ev) => (
                     <button
                       key={ev.id}
@@ -176,7 +213,7 @@ export default function CalendarCard({
                       className="mb-1 block w-full whitespace-nowrap rounded-md px-2 py-1 text-left text-[10px] font-medium transition-colors last:mb-0 hover:bg-surface"
                       style={{ color: ev.color }}
                     >
-                      {ev.title}
+                      ◆ {ev.title}
                     </button>
                   ))}
                 </div>

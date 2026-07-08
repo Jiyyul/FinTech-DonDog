@@ -26,7 +26,7 @@ function mapPayment(row: PaymentRow): PaymentRecord {
 
 export function seedPaymentsFromJson(rows: PaymentSeedRow[]) {
   const database = getDb();
-  database.exec("DELETE FROM payment_classifications; DELETE FROM payments;");
+  database.exec("DELETE FROM audit_reviews; DELETE FROM payment_classifications; DELETE FROM payments;");
 
   const sorted = [...rows].sort((a, b) => {
     const dateCmp = a.transacted_at.localeCompare(b.transacted_at);
@@ -39,16 +39,30 @@ export function seedPaymentsFromJson(rows: PaymentSeedRow[]) {
     VALUES (@merchant, @amount, @balance_after, @transacted_at, @payment_method)
   `);
 
+  const classify = database.prepare(`
+    INSERT INTO payment_classifications (payment_id, category, confidence, source, classified_at)
+    VALUES (@paymentId, @category, @confidence, @source, datetime('now'))
+  `);
+
   const insertMany = database.transaction((items: PaymentSeedRow[]) => {
     for (const item of items) {
       balance -= item.amount;
-      insert.run({
+      const result = insert.run({
         merchant: item.merchant,
         amount: item.amount,
         balance_after: balance,
         transacted_at: item.transacted_at,
         payment_method: item.payment_method ?? "학생회 체크카드",
       });
+
+      if (item.category && item.confidence != null) {
+        classify.run({
+          paymentId: Number(result.lastInsertRowid),
+          category: item.category,
+          confidence: item.confidence,
+          source: "seed",
+        });
+      }
     }
   });
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import HeroBudgetCard from "@/components/dashboard/HeroBudgetCard";
 import AuditCard from "@/components/dashboard/AuditCard";
 import CalendarCard from "@/components/dashboard/CalendarCard";
@@ -15,6 +15,7 @@ import ReceiptUploadModal from "@/components/dashboard/ReceiptUploadModal";
 import ScheduleFormModal from "@/components/dashboard/ScheduleFormModal";
 import FloatingAIChat from "@/components/ai/FloatingAIChat";
 import { useDashboardData } from "@/components/providers/DashboardDataProvider";
+import { useAuditReviewActions } from "@/hooks/useAuditReviewActions";
 import type {
   AuditAnomaly,
   BudgetCategory,
@@ -25,13 +26,24 @@ import type {
 export default function Dashboard() {
   const {
     anomalyQueue,
+    deferredAnomalies: initialDeferred,
+    pendingCoApprovals: initialPendingCoApprovals,
     calendarEvents: initialCalendarEvents,
+    paymentCalendarItems,
     recentTransactions,
   } = useDashboardData();
+  const { persistReview } = useAuditReviewActions();
+
   const [anomalies, setAnomalies] = useState(anomalyQueue);
-  const [deferredAnomalies, setDeferredAnomalies] = useState<AuditAnomaly[]>([]);
+  const [deferredAnomalies, setDeferredAnomalies] = useState(initialDeferred);
+  const [pendingCoApprovals, setPendingCoApprovals] = useState(initialPendingCoApprovals);
   const [transactions, setTransactions] = useState(recentTransactions);
   const [calendarEvents, setCalendarEvents] = useState(initialCalendarEvents);
+
+  useEffect(() => setAnomalies(anomalyQueue), [anomalyQueue]);
+  useEffect(() => setDeferredAnomalies(initialDeferred), [initialDeferred]);
+  useEffect(() => setPendingCoApprovals(initialPendingCoApprovals), [initialPendingCoApprovals]);
+  useEffect(() => setTransactions(recentTransactions), [recentTransactions]);
 
   const [anomalyModalOpen, setAnomalyModalOpen] = useState(false);
   const [selectedAnomaly, setSelectedAnomaly] = useState<AuditAnomaly | null>(null);
@@ -54,7 +66,8 @@ export default function Dashboard() {
   const handleSelectTransaction = (tx: DashboardTransaction) => {
     const linkedAnomaly =
       anomalies.find((a) => a.transaction.id === tx.id) ??
-      deferredAnomalies.find((a) => a.transaction.id === tx.id);
+      deferredAnomalies.find((a) => a.transaction.id === tx.id) ??
+      pendingCoApprovals.find((a) => a.transaction.id === tx.id);
     if (linkedAnomaly) {
       openAnomalyReview(linkedAnomaly);
       return;
@@ -72,18 +85,26 @@ export default function Dashboard() {
     setAnomalies((prev) => prev.filter((a) => a.id !== id));
   };
 
-  const handleApprove = () => {
+  const handleApprove = async () => {
     if (!selectedAnomaly) return;
+    const action = selectedAnomaly.coApprovalPending ? "co_approved" : "approved";
+    await persistReview(selectedAnomaly, action, {
+      category: selectedAnomaly.transaction.category,
+    });
     removeFromActiveQueue(selectedAnomaly.id);
     setDeferredAnomalies((prev) => prev.filter((a) => a.id !== selectedAnomaly.id));
+    setPendingCoApprovals((prev) => prev.filter((a) => a.id !== selectedAnomaly.id));
     closeAnomalyModal();
   };
 
-  const handleDefer = () => {
+  const handleDefer = async () => {
     if (!selectedAnomaly) return;
 
-    const deferredItem: AuditAnomaly = { ...selectedAnomaly, deferred: true };
+    await persistReview(selectedAnomaly, "deferred", {
+      category: selectedAnomaly.transaction.category,
+    });
 
+    const deferredItem: AuditAnomaly = { ...selectedAnomaly, deferred: true };
     setDeferredAnomalies((prev) => {
       if (prev.some((a) => a.id === deferredItem.id)) return prev;
       return [...prev, deferredItem];
@@ -93,37 +114,42 @@ export default function Dashboard() {
     closeAnomalyModal();
   };
 
-  const handleCoApproval = () => {
+  const handleCoApproval = async () => {
     if (!selectedAnomaly) return;
+    await persistReview(selectedAnomaly, "co_approval_pending", {
+      category: selectedAnomaly.transaction.category,
+    });
+    const pendingItem: AuditAnomaly = {
+      ...selectedAnomaly,
+      coApprovalPending: true,
+    };
+    setPendingCoApprovals((prev) => {
+      if (prev.some((a) => a.id === pendingItem.id)) return prev;
+      return [...prev, pendingItem];
+    });
     removeFromActiveQueue(selectedAnomaly.id);
-    setDeferredAnomalies((prev) => prev.filter((a) => a.id !== selectedAnomaly.id));
     closeAnomalyModal();
   };
 
-  const handleLinkSchedule = (scheduleId: string) => {
+  const handleLinkSchedule = async (scheduleId: string) => {
     if (!selectedAnomaly) return;
     const schedule = calendarEvents.find((e) => e.id === scheduleId);
-    if (schedule) {
-      setAnomalies((prev) =>
-        prev.map((a) =>
-          a.id === selectedAnomaly.id
-            ? { ...a, relatedScheduleId: scheduleId, relatedSchedule: schedule.title }
-            : a
-        )
-      );
-      setSelectedAnomaly((prev) =>
-        prev
-          ? { ...prev, relatedScheduleId: scheduleId, relatedSchedule: schedule.title }
-          : null
-      );
-    }
+    if (!schedule) return;
+
+    await persistReview(selectedAnomaly, "exception", {
+      category: selectedAnomaly.transaction.category,
+      relatedScheduleId: scheduleId,
+      relatedScheduleTitle: schedule.title,
+    });
+
     removeFromActiveQueue(selectedAnomaly.id);
     setExceptionModalOpen(false);
     closeAnomalyModal();
   };
 
-  const handleCategoryChange = (category: BudgetCategory) => {
+  const handleCategoryChange = async (category: BudgetCategory) => {
     if (!selectedAnomaly) return;
+
     const update = (a: AuditAnomaly) =>
       a.id === selectedAnomaly.id
         ? { ...a, transaction: { ...a.transaction, category } }
@@ -133,6 +159,8 @@ export default function Dashboard() {
     setSelectedAnomaly((prev) =>
       prev ? { ...prev, transaction: { ...prev.transaction, category } } : null
     );
+
+    await persistReview(selectedAnomaly, "category_change", { category });
   };
 
   const handleSaveEvent = (event: Omit<CalendarEvent, "id"> & { id?: string }) => {
@@ -175,8 +203,10 @@ export default function Dashboard() {
             className="h-full min-h-[360px]"
             anomalies={anomalies}
             deferredAnomalies={deferredAnomalies}
+            pendingCoApprovals={pendingCoApprovals}
             onReview={openAnomalyReview}
             onReviewDeferred={openAnomalyReview}
+            onReviewPendingCoApproval={openAnomalyReview}
           />
         </div>
       </section>
@@ -187,6 +217,7 @@ export default function Dashboard() {
             variant="compact"
             className="h-full min-h-[360px]"
             events={calendarEvents}
+            payments={paymentCalendarItems}
             onAddEvent={() => {
               setEditingEvent(null);
               setScheduleFormOpen(true);

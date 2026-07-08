@@ -9,7 +9,7 @@ import { useDashboardData } from "@/components/providers/DashboardDataProvider";
 import type { CalendarEvent } from "@/lib/dashboard-types";
 
 export default function CalendarPage() {
-  const { calendarEvents: initialEvents } = useDashboardData();
+  const { calendarEvents: initialEvents, paymentCalendarItems } = useDashboardData();
   const [events, setEvents] = useState(initialEvents);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<CalendarEvent | null>(null);
@@ -42,6 +42,7 @@ export default function CalendarPage() {
 
       <CalendarCard
         events={events}
+        payments={paymentCalendarItems}
         onAddEvent={() => {
           setEditing(null);
           setFormOpen(true);

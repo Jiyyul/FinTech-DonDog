@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import Card from "@/components/common/Card";
@@ -8,13 +8,10 @@ import Button from "@/components/common/Button";
 import type { BudgetCategory } from "@/lib/dashboard-types";
 import { CATEGORY_COLORS } from "@/lib/chart-colors";
 import { formatCurrency } from "@/lib/format";
-
-type CategoryBudget = {
-  category: BudgetCategory;
-  budget: number;
-  used: number;
-  color: string;
-};
+import {
+  useDashboardData,
+  useDashboardDataMutator,
+} from "@/components/providers/DashboardDataProvider";
 
 type BudgetHistoryItem = {
   id: string;
@@ -22,68 +19,7 @@ type BudgetHistoryItem = {
   category: string;
   from: number;
   to: number;
-  actor?: string;
-  type: "budget_change" | "ai_review";
-  label?: string;
-};
-
-const INITIAL_CATEGORIES: CategoryBudget[] = [
-  { category: "행사비", budget: 2_500_000, used: 1_870_000, color: CATEGORY_COLORS.행사비 },
-  { category: "식비", budget: 1_500_000, used: 920_000, color: CATEGORY_COLORS.식비 },
-  { category: "운영비", budget: 1_100_000, used: 744_800, color: CATEGORY_COLORS.운영비 },
-  { category: "교통비", budget: 900_000, used: 585_200, color: CATEGORY_COLORS.교통비 },
-  { category: "장비비", budget: 600_000, used: 478_800, color: CATEGORY_COLORS.장비비 },
-  { category: "기타", budget: 400_000, used: 372_400, color: CATEGORY_COLORS.기타 },
-];
-
-const INITIAL_HISTORY: BudgetHistoryItem[] = [
-  {
-    id: "hist-1",
-    date: "7월 2일",
-    category: "행사비",
-    from: 2_300_000,
-    to: 2_500_000,
-    actor: "홍길동",
-    type: "budget_change",
-  },
-  {
-    id: "hist-2",
-    date: "6월 18일",
-    category: "식비",
-    from: 1_200_000,
-    to: 1_500_000,
-    type: "budget_change",
-  },
-  {
-    id: "hist-3",
-    date: "7월 3일",
-    category: "행사비",
-    from: 0,
-    to: 0,
-    type: "ai_review",
-    label: "MT 펜션 예약 — 공동 승인 완료",
-  },
-  {
-    id: "hist-4",
-    date: "7월 1일",
-    category: "식비",
-    from: 0,
-    to: 0,
-    type: "ai_review",
-    label: "한식당 모임 — 회칙 위반 검토 후 승인",
-  },
-];
-
-const MONTHS = ["1월", "2월", "3월", "4월", "5월", "6월"] as const;
-
-const MONTHLY_BY_CATEGORY: Record<string, number[]> = {
-  전체: [620, 780, 1050, 890, 1120, 860],
-  행사비: [280, 320, 450, 380, 520, 410],
-  식비: [180, 210, 280, 240, 310, 250],
-  운영비: [90, 120, 150, 130, 160, 110],
-  교통비: [40, 55, 80, 60, 70, 50],
-  장비비: [20, 45, 60, 50, 40, 30],
-  기타: [10, 30, 40, 30, 20, 10],
+  type: "budget_change";
 };
 
 type TrendFilter = "전체" | BudgetCategory;
@@ -95,37 +31,104 @@ function formatHistoryDate(date: Date): string {
   return `${date.getMonth() + 1}월 ${date.getDate()}일`;
 }
 
+function sumByCategory(
+  transactions: { category: BudgetCategory; amount: number }[]
+) {
+  const map = new Map<BudgetCategory, number>();
+  for (const tx of transactions) {
+    map.set(tx.category, (map.get(tx.category) ?? 0) + tx.amount);
+  }
+  return map;
+}
+
 export default function BudgetManagementPage() {
-  const [totalBudget, setTotalBudget] = useState(8_000_000);
-  const [totalBudgetInput, setTotalBudgetInput] = useState("8000000");
-  const [categories] = useState(INITIAL_CATEGORIES);
-  const [history, setHistory] = useState(INITIAL_HISTORY);
+  const {
+    budgetTotal,
+    budgetUsed,
+    budgetRemaining,
+    categoryBudgets,
+    allTransactions,
+    monthlyBudgetTrend,
+  } = useDashboardData();
+  const setDashboardData = useDashboardDataMutator();
+
+  const [totalBudgetInput, setTotalBudgetInput] = useState(String(budgetTotal));
+  const [history, setHistory] = useState<BudgetHistoryItem[]>([]);
   const [trendFilter, setTrendFilter] = useState<TrendFilter>("전체");
+  const [saving, setSaving] = useState(false);
 
-  const trendData = MONTHLY_BY_CATEGORY[trendFilter] ?? MONTHLY_BY_CATEGORY.전체;
-  const trendMax = Math.max(...trendData);
+  useEffect(() => {
+    setTotalBudgetInput(String(budgetTotal));
+  }, [budgetTotal]);
 
-  const totalUsed = useMemo(
-    () => categories.reduce((sum, c) => sum + c.used, 0),
-    [categories]
+  const usedByCategory = useMemo(
+    () => sumByCategory(allTransactions),
+    [allTransactions]
   );
 
-  const handleTotalBudgetSave = () => {
-    const next = Number(totalBudgetInput);
-    if (Number.isNaN(next) || next <= 0 || next === totalBudget) return;
+  const categories = useMemo(
+    () =>
+      categoryBudgets.map((item) => ({
+        ...item,
+        used: usedByCategory.get(item.category) ?? 0,
+        color: CATEGORY_COLORS[item.category],
+      })),
+    [categoryBudgets, usedByCategory]
+  );
 
-    setHistory((prev) => [
-      {
-        id: `hist-total-${Date.now()}`,
-        date: formatHistoryDate(new Date()),
-        category: "총 예산",
-        from: totalBudget,
-        to: next,
-        type: "budget_change",
-      },
-      ...prev,
-    ]);
-    setTotalBudget(next);
+  const trendData = useMemo(() => {
+    if (trendFilter === "전체") {
+      return monthlyBudgetTrend.map((point) => point.used);
+    }
+
+    const byMonth = new Map<string, number>();
+    for (const tx of allTransactions) {
+      if (tx.category !== trendFilter) continue;
+      const month = `${Number(tx.date.slice(5, 7))}월`;
+      byMonth.set(month, (byMonth.get(month) ?? 0) + tx.amount);
+    }
+
+    return monthlyBudgetTrend.map((point) => byMonth.get(point.month) ?? 0);
+  }, [allTransactions, monthlyBudgetTrend, trendFilter]);
+
+  const trendMonths = monthlyBudgetTrend.map((point) => point.month);
+  const trendMax = Math.max(...trendData, 1);
+
+  const refreshDashboard = async () => {
+    const res = await fetch("/api/dashboard-data", { cache: "no-store" });
+    if (res.ok) {
+      setDashboardData(await res.json());
+    }
+  };
+
+  const handleTotalBudgetSave = async () => {
+    const next = Number(totalBudgetInput);
+    if (Number.isNaN(next) || next <= 0 || next === budgetTotal) return;
+
+    setSaving(true);
+    try {
+      const res = await fetch("/api/budget-settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ totalBudget: next }),
+      });
+      if (!res.ok) return;
+
+      setHistory((prev) => [
+        {
+          id: `hist-total-${Date.now()}`,
+          date: formatHistoryDate(new Date()),
+          category: "총 예산",
+          from: budgetTotal,
+          to: next,
+          type: "budget_change",
+        },
+        ...prev,
+      ]);
+      await refreshDashboard();
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -153,15 +156,20 @@ export default function BudgetManagementPage() {
             className={`min-w-[12rem] flex-1 ${inputClass}`}
             min={0}
           />
-          <Button type="button" variant="primary" onClick={handleTotalBudgetSave}>
+          <Button
+            type="button"
+            variant="primary"
+            onClick={handleTotalBudgetSave}
+            disabled={saving}
+          >
             저장
           </Button>
         </div>
         <p className="mt-3 text-[clamp(1.5rem,2.5vw,2rem)] font-bold tabular-nums text-navy">
-          {formatCurrency(totalBudget)}
+          {formatCurrency(budgetTotal)}
         </p>
         <p className="mt-1 text-[13px] text-muted">
-          사용 {formatCurrency(totalUsed)} · 잔액 {formatCurrency(totalBudget - totalUsed)}
+          사용 {formatCurrency(budgetUsed)} · 잔액 {formatCurrency(budgetRemaining)}
         </p>
       </Card>
 
@@ -178,48 +186,47 @@ export default function BudgetManagementPage() {
                 highlight
               />
             </dl>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface">
+              <div
+                className="h-full rounded-full transition-all duration-300"
+                style={{
+                  width: `${item.budget > 0 ? Math.min(100, Math.round((item.used / item.budget) * 100)) : 0}%`,
+                  backgroundColor: item.color,
+                }}
+              />
+            </div>
           </Card>
         ))}
       </div>
 
-      <div className="my-8 border-t border-hairline" />
-
-      <Card>
-        <h2 className="mb-5 text-[16px] font-semibold text-navy">예산 변경 이력</h2>
-        <ul className="space-y-5">
-          {history.map((item) => (
-            <li key={item.id} className="border-b border-hairline pb-5 last:border-0 last:pb-0">
-              <p className="text-[13px] font-medium text-muted">{item.date}</p>
-              {item.type === "budget_change" ? (
-                <>
+      {history.length > 0 && (
+        <>
+          <div className="my-8 border-t border-hairline" />
+          <Card>
+            <h2 className="mb-5 text-[16px] font-semibold text-navy">예산 변경 이력</h2>
+            <ul className="space-y-5">
+              {history.map((item) => (
+                <li key={item.id} className="border-b border-hairline pb-5 last:border-0 last:pb-0">
+                  <p className="text-[13px] font-medium text-muted">{item.date}</p>
                   <p className="mt-1 text-[15px] font-semibold text-ink">{item.category}</p>
                   <div className="mt-2 flex flex-wrap items-center gap-2 text-[14px] tabular-nums">
                     <span className="text-ink2">{formatCurrency(item.from)}</span>
                     <ArrowRight size={14} className="text-muted" strokeWidth={1.75} />
                     <span className="font-semibold text-navy">{formatCurrency(item.to)}</span>
                   </div>
-                  {item.actor && (
-                    <p className="mt-2 text-[12px] text-muted">관리자 {item.actor}</p>
-                  )}
-                </>
-              ) : (
-                <>
-                  <p className="mt-1 text-[15px] font-semibold text-ink">AI 검토</p>
-                  <p className="mt-1 text-[14px] text-ink2">{item.label}</p>
-                  <p className="mt-1 text-[12px] text-muted">{item.category}</p>
-                </>
-              )}
-            </li>
-          ))}
-        </ul>
-      </Card>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </>
+      )}
 
       <div className="my-8 border-t border-hairline" />
 
       <Card>
         <h2 className="mb-4 text-[16px] font-semibold text-navy">월별 사용 추이</h2>
         <div className="mb-5 flex flex-wrap gap-2">
-          {(["전체", ...INITIAL_CATEGORIES.map((c) => c.category)] as TrendFilter[]).map(
+          {(["전체", ...categoryBudgets.map((c) => c.category)] as TrendFilter[]).map(
             (cat) => (
               <button
                 key={cat}
@@ -237,7 +244,7 @@ export default function BudgetManagementPage() {
           )}
         </div>
         <ul className="space-y-3">
-          {MONTHS.map((month, index) => {
+          {trendMonths.map((month, index) => {
             const value = trendData[index] ?? 0;
             const width = trendMax > 0 ? Math.round((value / trendMax) * 100) : 0;
             const color =
@@ -255,8 +262,8 @@ export default function BudgetManagementPage() {
                       style={{ width: `${width}%`, backgroundColor: color }}
                     />
                   </div>
-                  <span className="w-16 shrink-0 text-right text-[12px] tabular-nums text-muted">
-                    {formatCurrency(value * 10_000)}
+                  <span className="w-20 shrink-0 text-right text-[12px] tabular-nums text-muted">
+                    {formatCurrency(value)}
                   </span>
                 </div>
               </li>

@@ -28,6 +28,23 @@ CREATE TABLE IF NOT EXISTS payment_classifications (
   classified_at TEXT NOT NULL DEFAULT (datetime('now')),
   FOREIGN KEY (payment_id) REFERENCES payments(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS audit_reviews (
+  payment_id INTEGER NOT NULL,
+  anomaly_type TEXT NOT NULL,
+  review_status TEXT NOT NULL,
+  category_override TEXT,
+  related_schedule_id TEXT,
+  related_schedule_title TEXT,
+  reviewed_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (payment_id, anomaly_type),
+  FOREIGN KEY (payment_id) REFERENCES payments(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS budget_settings (
+  category TEXT PRIMARY KEY,
+  budget_amount INTEGER NOT NULL
+);
 `;
 
 export function getDbPath() {

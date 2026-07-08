@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import AuditCard from "@/components/dashboard/AuditCard";
@@ -8,16 +8,29 @@ import AnomalyReviewModal from "@/components/dashboard/AnomalyReviewModal";
 import ExceptionModal from "@/components/dashboard/ExceptionModal";
 import Card from "@/components/common/Card";
 import { useDashboardData } from "@/components/providers/DashboardDataProvider";
-import { ANOMALY_TYPE_LABELS, type AuditAnomaly } from "@/lib/dashboard-types";
+import { useAuditReviewActions } from "@/hooks/useAuditReviewActions";
+import { ANOMALY_TYPE_LABELS, type AuditAnomaly, type BudgetCategory } from "@/lib/dashboard-types";
 import { formatCurrency } from "@/lib/format";
 
 export default function AuditPage() {
-  const { anomalyQueue, calendarEvents } = useDashboardData();
+  const {
+    anomalyQueue,
+    deferredAnomalies: initialDeferred,
+    pendingCoApprovals: initialPendingCoApprovals,
+    calendarEvents,
+  } = useDashboardData();
+  const { persistReview } = useAuditReviewActions();
+
   const [anomalies, setAnomalies] = useState(anomalyQueue);
-  const [deferredAnomalies, setDeferredAnomalies] = useState<AuditAnomaly[]>([]);
+  const [deferredAnomalies, setDeferredAnomalies] = useState(initialDeferred);
+  const [pendingCoApprovals, setPendingCoApprovals] = useState(initialPendingCoApprovals);
   const [selectedAnomaly, setSelectedAnomaly] = useState<AuditAnomaly | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [exceptionOpen, setExceptionOpen] = useState(false);
+
+  useEffect(() => setAnomalies(anomalyQueue), [anomalyQueue]);
+  useEffect(() => setDeferredAnomalies(initialDeferred), [initialDeferred]);
+  useEffect(() => setPendingCoApprovals(initialPendingCoApprovals), [initialPendingCoApprovals]);
 
   const openReview = (anomaly: AuditAnomaly) => {
     setSelectedAnomaly(anomaly);
@@ -31,6 +44,22 @@ export default function AuditPage() {
 
   const removeFromQueue = (id: string) => {
     setAnomalies((prev) => prev.filter((a) => a.id !== id));
+  };
+
+  const handleCategoryChange = async (category: BudgetCategory) => {
+    if (!selectedAnomaly) return;
+
+    const update = (a: AuditAnomaly) =>
+      a.id === selectedAnomaly.id
+        ? { ...a, transaction: { ...a.transaction, category } }
+        : a;
+    setAnomalies((prev) => prev.map(update));
+    setDeferredAnomalies((prev) => prev.map(update));
+    setSelectedAnomaly((prev) =>
+      prev ? { ...prev, transaction: { ...prev.transaction, category } } : null
+    );
+
+    await persistReview(selectedAnomaly, "category_change", { category });
   };
 
   return (
@@ -53,18 +82,22 @@ export default function AuditPage() {
           className="h-full"
           anomalies={anomalies}
           deferredAnomalies={deferredAnomalies}
+          pendingCoApprovals={pendingCoApprovals}
           onReview={openReview}
           onReviewDeferred={openReview}
+          onReviewPendingCoApproval={openReview}
         />
       </div>
 
       <Card>
         <h2 className="mb-4 text-[16px] font-semibold text-navy">전체 이상 거래 목록</h2>
-        {anomalies.length === 0 && deferredAnomalies.length === 0 ? (
+        {anomalies.length === 0 &&
+        deferredAnomalies.length === 0 &&
+        pendingCoApprovals.length === 0 ? (
           <p className="text-[14px] text-muted">검토할 이상 거래가 없습니다.</p>
         ) : (
           <ul className="space-y-3">
-            {[...anomalies, ...deferredAnomalies].map((item) => (
+            {[...anomalies, ...pendingCoApprovals, ...deferredAnomalies].map((item) => (
               <li key={item.id}>
                 <button
                   type="button"
@@ -92,46 +125,63 @@ export default function AuditPage() {
         open={modalOpen}
         anomaly={selectedAnomaly}
         onClose={closeModal}
-        onApprove={() => {
-          if (selectedAnomaly) removeFromQueue(selectedAnomaly.id);
+        onApprove={async () => {
+          if (!selectedAnomaly) return;
+          const action = selectedAnomaly.coApprovalPending ? "co_approved" : "approved";
+          await persistReview(selectedAnomaly, action, {
+            category: selectedAnomaly.transaction.category,
+          });
+          removeFromQueue(selectedAnomaly.id);
+          setPendingCoApprovals((prev) => prev.filter((a) => a.id !== selectedAnomaly.id));
           closeModal();
         }}
         onException={() => setExceptionOpen(true)}
-        onDefer={() => {
+        onDefer={async () => {
           if (!selectedAnomaly) return;
+          await persistReview(selectedAnomaly, "deferred", {
+            category: selectedAnomaly.transaction.category,
+          });
           setDeferredAnomalies((prev) => [...prev, { ...selectedAnomaly, deferred: true }]);
           removeFromQueue(selectedAnomaly.id);
           setExceptionOpen(false);
           closeModal();
         }}
-        onRequestCoApproval={() => {
-          if (selectedAnomaly) removeFromQueue(selectedAnomaly.id);
+        onRequestCoApproval={async () => {
+          if (!selectedAnomaly) return;
+          await persistReview(selectedAnomaly, "co_approval_pending", {
+            category: selectedAnomaly.transaction.category,
+          });
+          setPendingCoApprovals((prev) => {
+            if (prev.some((a) => a.id === selectedAnomaly.id)) return prev;
+            return [...prev, { ...selectedAnomaly, coApprovalPending: true }];
+          });
+          removeFromQueue(selectedAnomaly.id);
           closeModal();
         }}
-        onCategoryChange={(category) => {
-          if (!selectedAnomaly) return;
-          const update = (a: AuditAnomaly) =>
-            a.id === selectedAnomaly.id
-              ? { ...a, transaction: { ...a.transaction, category } }
-              : a;
-          setAnomalies((prev) => prev.map(update));
-          setSelectedAnomaly((prev) =>
-            prev ? { ...prev, transaction: { ...prev.transaction, category } } : null
-          );
-        }}
+        onCategoryChange={handleCategoryChange}
       />
 
       <ExceptionModal
         open={exceptionOpen}
         schedules={calendarEvents}
         onClose={() => setExceptionOpen(false)}
-        onLinkSchedule={() => {
-          if (selectedAnomaly) removeFromQueue(selectedAnomaly.id);
+        onLinkSchedule={async (scheduleId) => {
+          if (!selectedAnomaly) return;
+          const schedule = calendarEvents.find((e) => e.id === scheduleId);
+          await persistReview(selectedAnomaly, "exception", {
+            category: selectedAnomaly.transaction.category,
+            relatedScheduleId: scheduleId,
+            relatedScheduleTitle: schedule?.title,
+          });
+          removeFromQueue(selectedAnomaly.id);
           setExceptionOpen(false);
           closeModal();
         }}
-        onDefer={() => {
+        onDefer={async () => {
           if (!selectedAnomaly) return;
+          await persistReview(selectedAnomaly, "deferred", {
+            category: selectedAnomaly.transaction.category,
+          });
           setDeferredAnomalies((prev) => [...prev, { ...selectedAnomaly, deferred: true }]);
           removeFromQueue(selectedAnomaly.id);
           setExceptionOpen(false);

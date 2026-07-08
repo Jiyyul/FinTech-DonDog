@@ -18,6 +18,7 @@ export type AnomalyType =
 
 export type DashboardTransaction = {
   id: string;
+  paymentId: number;
   merchant: string;
   category: BudgetCategory;
   date: string;
@@ -41,6 +42,7 @@ export type AuditAnomaly = {
   relatedScheduleId?: string;
   ruleReference?: string;
   deferred?: boolean;
+  coApprovalPending?: boolean;
 };
 
 export type CalendarEvent = {
@@ -51,6 +53,18 @@ export type CalendarEvent = {
   year: number;
   color: string;
   description?: string;
+};
+
+export type PaymentCalendarItem = {
+  id: string;
+  paymentId: number;
+  merchant: string;
+  amount: number;
+  category: BudgetCategory;
+  date: number;
+  month: number;
+  year: number;
+  dateLabel: string;
 };
 
 export type ActivityItem = {

@@ -1,5 +1,3 @@
-import "server-only";
-
 import {
   buildActivityFeed,
   buildAiReportSummary,
@@ -8,13 +6,15 @@ import {
   buildBudgetSlices,
   buildBudgetStats,
   buildMonthlyBudgetTrend,
+  buildPaymentCalendarItems,
   buildTransactionsFromPayments,
   AI_CHAT_SUGGESTIONS,
   AMOUNT_THRESHOLD_EXPORT,
   CALENDAR_EVENTS,
-  DOUGHNUT_CENTER_PERCENT,
 } from "@/lib/build-dashboard-from-payments";
 import { buildClassificationMap } from "@/lib/classify-payments";
+import { getAllAuditReviews } from "@/lib/audit-repository";
+import { getCategoryBudgets, getTotalBudget } from "@/lib/budget-repository";
 import type {
   ActivityItem,
   AIReportSummary,
@@ -23,12 +23,15 @@ import type {
   CalendarEvent,
   DashboardTransaction,
   MonthlyBudgetPoint,
+  PaymentCalendarItem,
 } from "@/lib/dashboard-types";
 import {
   getAccountBalances,
   getAllPayments,
   getClassifications,
 } from "@/lib/payment-repository";
+
+import type { CategoryBudgetSetting } from "@/lib/budget-repository";
 
 export type DashboardData = {
   budgetTotal: number;
@@ -39,14 +42,18 @@ export type DashboardData = {
   amountThreshold: number;
   doughnutCenterPercent: number;
   budgetSlices: BudgetCategorySlice[];
+  categoryBudgets: CategoryBudgetSetting[];
   pendingAuditTransaction: DashboardTransaction;
   anomalyQueue: AuditAnomaly[];
+  deferredAnomalies: AuditAnomaly[];
+  pendingCoApprovals: AuditAnomaly[];
   recentTransactions: DashboardTransaction[];
   allTransactions: DashboardTransaction[];
   aiReportSummary: AIReportSummary;
   activityFeed: ActivityItem[];
   monthlyBudgetTrend: MonthlyBudgetPoint[];
   calendarEvents: CalendarEvent[];
+  paymentCalendarItems: PaymentCalendarItem[];
   aiChatSuggestions: string[];
   currentAccountBalance: number;
   aiChatResponses: Record<string, string>;
@@ -56,16 +63,27 @@ export function getDashboardData(): DashboardData {
   const payments = getAllPayments();
   const classifications = getClassifications();
   const classificationMap = buildClassificationMap(classifications);
+  const auditReviews = getAllAuditReviews();
+  const categoryBudgets = getCategoryBudgets();
+  const totalBudget = getTotalBudget();
   const { initial, current } = getAccountBalances();
-  const budgetStats = buildBudgetStats(payments, initial, current);
+  const budgetStats = buildBudgetStats(payments, totalBudget, current);
 
-  const transactions = buildTransactionsFromPayments(payments, classificationMap);
-  const allTx = buildAllTransactions(payments, classificationMap);
-  const anomalies = buildAnomalyQueue(transactions);
-  const slices = buildBudgetSlices(transactions);
+  const transactions = buildTransactionsFromPayments(
+    payments,
+    classificationMap,
+    auditReviews
+  );
+  const allTx = buildAllTransactions(payments, classificationMap, auditReviews);
+  const { active: anomalies, deferred, pendingCoApproval } = buildAnomalyQueue(
+    transactions,
+    auditReviews
+  );
+  const slices = buildBudgetSlices(allTx, categoryBudgets);
   const report = buildAiReportSummary(transactions, anomalies.length, current);
   const activity = buildActivityFeed(transactions);
   const monthlyTrend = buildMonthlyBudgetTrend(payments, initial);
+  const paymentCalendarItems = buildPaymentCalendarItems(allTx);
 
   const pendingAuditTransaction =
     transactions.find((t) => t.status === "review") ?? transactions[0];
@@ -85,10 +103,13 @@ export function getDashboardData(): DashboardData {
     budgetUsagePercent: budgetStats.usagePercent,
     budgetUsageSpeedPercent: budgetStats.usageSpeedPercent,
     amountThreshold: AMOUNT_THRESHOLD_EXPORT,
-    doughnutCenterPercent: DOUGHNUT_CENTER_PERCENT,
+    doughnutCenterPercent: budgetStats.doughnutCenterPercent,
     budgetSlices: slices,
+    categoryBudgets,
     pendingAuditTransaction,
     anomalyQueue: anomalies,
+    deferredAnomalies: deferred,
+    pendingCoApprovals: pendingCoApproval,
     recentTransactions: transactions.slice(0, 4),
     allTransactions: allTx,
     aiReportSummary: report,
@@ -96,13 +117,14 @@ export function getDashboardData(): DashboardData {
       ...activity,
       {
         id: "act-4",
-        time: "1시간 전",
+        time: "7월 7일",
         message: "AI 회계 리포트가 생성되었습니다.",
         hasDogIcon: true,
       },
     ],
     monthlyBudgetTrend: monthlyTrend,
     calendarEvents: CALENDAR_EVENTS,
+    paymentCalendarItems,
     aiChatSuggestions: AI_CHAT_SUGGESTIONS,
     currentAccountBalance: current,
     aiChatResponses: {

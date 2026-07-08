@@ -59,6 +59,7 @@ export default function AnomalyReviewModal({
   const tx = anomaly.transaction;
   const isAmountThreshold = anomaly.type === "amount_threshold";
   const isLowConfidence = anomaly.type === "low_confidence";
+  const isCoApprovalPending = Boolean(anomaly.coApprovalPending);
 
   return (
     <>
@@ -127,7 +128,9 @@ export default function AnomalyReviewModal({
 
           <div className="mt-4 rounded-2xl bg-surface p-4 ring-1 ring-hairline">
             <AIMessage>
-              {tx.category}로 분류했어요. 신뢰도 {anomaly.confidence}%
+              {isCoApprovalPending
+                ? "공동 승인 요청이 접수되었습니다. 승인자 확인을 기다리는 중이에요."
+                : `${tx.category}로 분류했어요. 신뢰도 ${anomaly.confidence}%`}
             </AIMessage>
           </div>
 
@@ -152,11 +155,13 @@ export default function AnomalyReviewModal({
         <div className="flex flex-wrap gap-2.5 border-t border-hairline px-6 py-4">
           {isAmountThreshold ? (
             <>
-              <Button variant="primary" className="min-w-[8rem] flex-1" onClick={onRequestCoApproval}>
-                공동 승인 요청
-              </Button>
+              {!isCoApprovalPending && (
+                <Button variant="primary" className="min-w-[8rem] flex-1" onClick={onRequestCoApproval}>
+                  공동 승인 요청
+                </Button>
+              )}
               <Button variant="secondary" className="min-w-[8rem] flex-1" onClick={onApprove}>
-                문제없음 승인
+                {isCoApprovalPending ? "승인 완료" : "문제없음 승인"}
               </Button>
               <Button variant="ghost" className="min-w-[4rem] px-4 text-[13px]" onClick={onDefer}>
                 보류
