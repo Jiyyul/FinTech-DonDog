@@ -4,6 +4,7 @@ import LandingBackground from "@/components/landing/LandingBackground";
 import LandingNavbar from "@/components/landing/LandingNavbar";
 import HeroSection from "@/components/landing/HeroSection";
 import FeaturesSection from "@/components/landing/FeaturesSection";
+import AIChatbotSection from "@/components/landing/AIChatbotSection";
 import HowItWorksSection from "@/components/landing/HowItWorksSection";
 import BeforeAfterSection from "@/components/landing/BeforeAfterSection";
 import TestimonialsSection from "@/components/landing/TestimonialsSection";
@@ -50,6 +51,7 @@ function LandingPageContent() {
       <main>
         <HeroSection />
         <FeaturesSection />
+        <AIChatbotSection />
         <HowItWorksSection />
         <BeforeAfterSection />
         <TestimonialsSection />

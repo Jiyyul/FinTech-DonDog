@@ -5,15 +5,13 @@ import {
   CreditCard,
   Eye,
   EyeOff,
-  FileSearch,
   FileSpreadsheet,
+  LayoutDashboard,
   Link2,
-  Receipt,
   ScanLine,
   ShieldAlert,
   Sparkles,
   Users,
-  Wallet,
   type LucideIcon,
 } from "lucide-react";
 
@@ -56,40 +54,40 @@ export const LANDING_NAV_LINKS: NavLink[] = [
 
 export const FEATURES: Feature[] = [
   {
-    icon: Bot,
-    title: "AI 자동 분류",
+    icon: CreditCard,
+    title: "계좌·카드 연동",
     description:
-      "계좌·카드 거래를 AI가 실시간으로 분류하고, 카테고리와 일정을 자동 연결합니다.",
+      "Open Banking API 및 카드사 API를 통해 계좌와 카드를 연동하고 거래내역을 자동 수집합니다.",
   },
   {
-    icon: Receipt,
-    title: "OCR 영수증 매칭",
+    icon: ScanLine,
+    title: "영수증 자동 등록",
     description:
-      "영수증을 업로드하면 OCR로 금액·가맹점을 추출하고 거래와 자동 매칭합니다.",
+      "OCR로 영수증을 인식하여 결제 정보와 금액을 자동 입력합니다.",
+  },
+  {
+    icon: Sparkles,
+    title: "AI 거래내역 자동 분류",
+    description:
+      "AI가 거래내역을 식비, 행사비, 교통비 등으로 자동 분류합니다.",
   },
   {
     icon: ShieldAlert,
-    title: "이상거래 감지",
+    title: "AI 이상거래 탐지",
     description:
-      "평소 패턴과 다른 지출을 AI가 탐지하고, 검토·승인 워크플로를 제공합니다.",
+      "중복 결제, 비정상 지출 등을 탐지하여 총무에게 알림을 제공합니다.",
   },
   {
-    icon: Eye,
-    title: "실시간 회계 공개",
+    icon: LayoutDashboard,
+    title: "실시간 회계 대시보드",
     description:
-      "동아리원 누구나 최신 회계 현황을 투명하게 확인할 수 있습니다.",
+      "회원 누구나 회비 사용 내역과 잔액을 실시간으로 확인할 수 있습니다.",
   },
   {
-    icon: Wallet,
-    title: "예산 관리",
+    icon: FileSpreadsheet,
+    title: "회계 장부 및 보고서 자동 생성",
     description:
-      "학기·행사별 예산을 설정하고 사용률과 잔액을 한눈에 파악합니다.",
-  },
-  {
-    icon: FileSearch,
-    title: "감사 리포트",
-    description:
-      "AI가 회계 데이터를 분석해 요약 리포트와 인사이트를 자동 생성합니다.",
+      "회계 데이터를 PDF 및 Excel 형식으로 자동 생성하여 감사 자료로 활용할 수 있습니다.",
   },
 ];
 
