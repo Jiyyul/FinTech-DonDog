@@ -27,9 +27,10 @@ ChartJS.register(
 
 type BudgetTrendChartProps = {
   data: MonthlyBudgetPoint[];
+  preview?: boolean;
 };
 
-export default function BudgetTrendChart({ data }: BudgetTrendChartProps) {
+export default function BudgetTrendChart({ data, preview = false }: BudgetTrendChartProps) {
   const lineColor = CHART_COLORS.행사비;
 
   const chartData = {
@@ -55,10 +56,13 @@ export default function BudgetTrendChart({ data }: BudgetTrendChartProps) {
   const options: ChartOptions<"line"> = {
     responsive: true,
     maintainAspectRatio: false,
-    animation: {
-      duration: 700,
-      easing: "easeOutQuart",
-    },
+    animation: preview
+      ? false
+      : {
+          duration: 700,
+          easing: "easeOutQuart",
+        },
+    devicePixelRatio: preview ? 2 : undefined,
     interaction: {
       mode: "index",
       intersect: false,
@@ -69,8 +73,8 @@ export default function BudgetTrendChart({ data }: BudgetTrendChartProps) {
         border: { display: false },
         ticks: {
           color: CHART_UI.muted,
-          font: { size: 12, weight: 500 },
-          padding: 10,
+          font: { size: preview ? 10 : 12, weight: 500 },
+          padding: preview ? 4 : 10,
         },
       },
       y: {
@@ -80,8 +84,9 @@ export default function BudgetTrendChart({ data }: BudgetTrendChartProps) {
         border: { display: false },
         ticks: {
           color: CHART_UI.muted,
-          font: { size: 12 },
-          padding: 8,
+          font: { size: preview ? 9 : 12 },
+          padding: preview ? 4 : 8,
+          maxTicksLimit: preview ? 4 : undefined,
           callback: (value) => `${Number(value) / 10000}만`,
         },
       },
@@ -111,7 +116,11 @@ export default function BudgetTrendChart({ data }: BudgetTrendChartProps) {
   };
 
   return (
-    <div className="relative h-full min-h-[240px] w-full min-w-0 overflow-visible">
+    <div
+      className={`relative h-full w-full min-w-0 overflow-visible ${
+        preview ? "min-h-[110px]" : "min-h-[240px]"
+      }`}
+    >
       <Line data={chartData} options={options} />
     </div>
   );

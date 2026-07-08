@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 
 const LOGO_SRC = "/logo/dondog-logo.png";
 const LOGO_WIDTH = 453;
@@ -6,7 +7,11 @@ const LOGO_HEIGHT = 428;
 
 export default function DonDogLogo() {
   return (
-    <div className="sidebar-logo-block">
+    <Link
+      href="/"
+      className="sidebar-logo-block rounded-xl transition-opacity duration-200 hover:opacity-80"
+      aria-label="돈독 홈으로 이동"
+    >
       <div className="sidebar-logo-mark flex shrink-0 items-center justify-center p-1">
         <Image
           src={LOGO_SRC}
@@ -26,6 +31,6 @@ export default function DonDogLogo() {
           AI Accounting Platform
         </p>
       </div>
-    </div>
+    </Link>
   );
 }

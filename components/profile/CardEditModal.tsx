@@ -7,7 +7,7 @@ import type { RegisteredCard } from "@/lib/mock-data";
 
 type CardEditModalProps = {
   open: boolean;
-  card: RegisteredCard;
+  card: RegisteredCard | null;
   onClose: () => void;
   onSave: (card: RegisteredCard) => void;
 };
@@ -21,15 +21,16 @@ export default function CardEditModal({
   onClose,
   onSave,
 }: CardEditModalProps) {
-  const [label, setLabel] = useState(card.label);
-  const [issuer, setIssuer] = useState(card.issuer);
-  const [last4, setLast4] = useState(card.last4);
+  const isNew = !card;
+  const [label, setLabel] = useState("");
+  const [issuer, setIssuer] = useState("");
+  const [last4, setLast4] = useState("");
 
   useEffect(() => {
     if (open) {
-      setLabel(card.label);
-      setIssuer(card.issuer);
-      setLast4(card.last4);
+      setLabel(card?.label ?? "");
+      setIssuer(card?.issuer ?? "");
+      setLast4(card?.last4 ?? "");
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
@@ -43,7 +44,12 @@ export default function CardEditModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({ ...card, label: label.trim(), issuer: issuer.trim(), last4: last4.trim() });
+    onSave({
+      id: card?.id ?? `card-${Date.now()}`,
+      label: label.trim(),
+      issuer: issuer.trim(),
+      last4: last4.trim(),
+    });
     onClose();
   };
 
@@ -65,7 +71,7 @@ export default function CardEditModal({
             id="card-edit-title"
             className="text-[16px] font-semibold tracking-title-tight text-navy"
           >
-            카드 정보 수정
+            {isNew ? "카드 등록" : "카드 정보 수정"}
           </h2>
           <button type="button" onClick={onClose} className="ui-icon-btn" aria-label="닫기">
             <X size={18} strokeWidth={1.5} />
@@ -75,19 +81,33 @@ export default function CardEditModal({
         <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
           <label className="block">
             <span className="mb-1.5 block text-[13px] text-muted">카드 별칭</span>
-            <input value={label} onChange={(e) => setLabel(e.target.value)} className={inputClass} required />
+            <input
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              className={inputClass}
+              placeholder="예: 학생회 체크카드"
+              required
+            />
           </label>
           <label className="block">
             <span className="mb-1.5 block text-[13px] text-muted">발급 은행</span>
-            <input value={issuer} onChange={(e) => setIssuer(e.target.value)} className={inputClass} required />
+            <input
+              value={issuer}
+              onChange={(e) => setIssuer(e.target.value)}
+              className={inputClass}
+              placeholder="예: 국민은행"
+              required
+            />
           </label>
           <label className="block">
             <span className="mb-1.5 block text-[13px] text-muted">카드 번호 (끝 4자리)</span>
             <input
               value={last4}
-              onChange={(e) => setLast4(e.target.value)}
+              onChange={(e) => setLast4(e.target.value.replace(/\D/g, "").slice(0, 4))}
               className={inputClass}
+              placeholder="1234"
               maxLength={4}
+              inputMode="numeric"
               required
             />
           </label>
@@ -96,7 +116,7 @@ export default function CardEditModal({
               취소
             </Button>
             <Button type="submit" variant="primary" className="flex-1">
-              저장
+              {isNew ? "등록" : "저장"}
             </Button>
           </div>
         </form>

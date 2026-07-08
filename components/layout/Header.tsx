@@ -7,8 +7,10 @@ import SearchBar from "@/components/common/SearchBar";
 import Avatar from "@/components/common/Avatar";
 import { useSearch } from "@/components/layout/SearchProvider";
 import { useDashboardData } from "@/components/providers/DashboardDataProvider";
+import { useMockUser } from "@/components/providers/MockUserProvider";
+import { useMockSession } from "@/components/auth/useMockSession";
+import { getUserInitials } from "@/lib/mock-auth";
 import { getNavItemByPath } from "@/lib/navigation";
-import { CURRENT_ORGANIZATION, CURRENT_USER } from "@/lib/mock-data";
 import { formatCurrency } from "@/lib/format";
 import { matchesSearch } from "@/lib/search-utils";
 
@@ -17,17 +19,21 @@ export default function Header() {
   const router = useRouter();
   const { allTransactions } = useDashboardData();
   const { query, setQuery, requestSelectTransaction } = useSearch();
+  const { currentOrganization, hasEmptyData } = useMockUser();
+  const { session } = useMockSession();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
 
   const currentNav = getNavItemByPath(pathname);
   const pageTitle = currentNav?.label ?? "Dashboard";
-  const isDashboard = pathname === "/";
+  const isDashboard = pathname === "/" || pathname === "/dashboard";
+
+  const searchTransactions = hasEmptyData ? [] : allTransactions;
 
   const results = useMemo(() => {
     if (!query.trim()) return [];
-    return allTransactions.filter((tx) => matchesSearch(tx, query)).slice(0, 6);
-  }, [query, allTransactions]);
+    return searchTransactions.filter((tx) => matchesSearch(tx, query)).slice(0, 6);
+  }, [query, searchTransactions]);
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -54,7 +60,9 @@ export default function Header() {
     >
       <div className="min-w-0 flex-1 basis-[12rem]">
         <h1 className="ui-page-title">{pageTitle}</h1>
-        <p className="ui-page-subtitle">{CURRENT_ORGANIZATION.semester}</p>
+        <p className="ui-page-subtitle">
+          {currentOrganization?.semester ?? "모임을 선택하거나 새로 만들어보세요"}
+        </p>
       </div>
 
       <div className="flex w-full min-w-0 shrink-0 flex-wrap items-center justify-end gap-2.5 sm:w-auto">
@@ -119,7 +127,7 @@ export default function Header() {
           className="shrink-0 rounded-full transition-transform duration-200 ease-premium hover:scale-[1.03]"
           aria-label="프로필"
         >
-          <Avatar initials={CURRENT_USER.initials} size="lg" />
+          <Avatar initials={getUserInitials(session?.user.name ?? "게스트")} size="lg" />
         </button>
       </div>
     </header>

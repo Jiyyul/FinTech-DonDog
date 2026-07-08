@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { LogOut, Plus } from "lucide-react";
 import Avatar from "@/components/common/Avatar";
-import { CURRENT_USER } from "@/lib/mock-data";
+import { useMockSession } from "@/components/auth/useMockSession";
+import { clearMockSession, getUserInitials } from "@/lib/mock-auth";
 
 type SidebarUserProps = {
   onAddGroup: () => void;
@@ -11,13 +12,16 @@ type SidebarUserProps = {
 
 export default function SidebarUser({ onAddGroup }: SidebarUserProps) {
   const router = useRouter();
+  const { session } = useMockSession();
 
   const handleLogout = () => {
-    if (typeof window !== "undefined") {
-      sessionStorage.setItem("dondok-session", "logged-out");
-    }
-    router.push("/login");
+    clearMockSession();
+    router.push("/");
   };
+
+  const displayName = session?.user.name ?? "게스트";
+  const displayRole = session?.user.role ?? "";
+  const initials = getUserInitials(displayName);
 
   return (
     <div className="space-y-2">
@@ -33,10 +37,10 @@ export default function SidebarUser({ onAddGroup }: SidebarUserProps) {
       </button>
 
       <div className="sidebar-user-row flex items-center gap-2.5 px-1.5 py-1.5">
-        <Avatar initials={CURRENT_USER.initials} size="md" />
+        <Avatar initials={initials} size="md" />
         <div className="sidebar-label min-w-0 flex-1">
-          <p className="truncate text-[13px] font-medium text-ink">{CURRENT_USER.name}</p>
-          <p className="truncate text-[11px] text-muted">{CURRENT_USER.role}</p>
+          <p className="truncate text-[13px] font-medium text-ink">{displayName}</p>
+          <p className="truncate text-[11px] text-muted">{displayRole}</p>
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   approveAnomalyAction,
@@ -22,8 +22,14 @@ import TransactionDrawer from "@/components/dashboard/TransactionDrawer";
 import ExceptionModal from "@/components/dashboard/ExceptionModal";
 import ScheduleFormModal from "@/components/dashboard/ScheduleFormModal";
 import FloatingAIChat from "@/components/ai/FloatingAIChat";
+import EmptyDashboard from "@/components/dashboard/EmptyDashboard";
+import { useSearch } from "@/components/layout/SearchProvider";
 import { useDashboardData } from "@/components/providers/DashboardDataProvider";
+import { useMockUser } from "@/components/providers/MockUserProvider";
+import { prependActivity } from "@/lib/activity-feed";
+import { matchesSearch } from "@/lib/search-utils";
 import type {
+  ActivityItem,
   AuditAnomaly,
   BudgetCategory,
   CalendarEvent,
@@ -36,10 +42,22 @@ export default function Dashboard() {
     anomalyQueue,
     calendarEvents: initialCalendarEvents,
     recentTransactions: transactions,
+    activityFeed: initialActivityFeed,
   } = useDashboardData();
+  const { isEmptyDashboard, openAddGroupModal, currentOrganization } = useMockUser();
+  const { query, selectTransactionId, clearSelectTransaction } = useSearch();
+
   const [anomalies, setAnomalies] = useState(anomalyQueue);
   const [deferredAnomalies, setDeferredAnomalies] = useState<AuditAnomaly[]>([]);
   const [calendarEvents, setCalendarEvents] = useState(initialCalendarEvents);
+  const [activities, setActivities] = useState<ActivityItem[]>(initialActivityFeed);
+
+  const logActivity = (
+    message: string,
+    options?: { hasDogIcon?: boolean; icon?: ActivityItem["icon"] }
+  ) => {
+    setActivities((prev) => prependActivity(prev, message, options));
+  };
 
   const [anomalyModalOpen, setAnomalyModalOpen] = useState(false);
   const [selectedAnomaly, setSelectedAnomaly] = useState<AuditAnomaly | null>(null);
@@ -68,6 +86,21 @@ export default function Dashboard() {
     setTxDrawerOpen(true);
   };
 
+  const displayedTransactions = useMemo(() => {
+    if (!query.trim()) return transactions;
+    return transactions.filter((tx) => matchesSearch(tx, query));
+  }, [transactions, query]);
+
+  useEffect(() => {
+    if (!selectTransactionId) return;
+
+    const tx = transactions.find((t) => t.id === selectTransactionId);
+
+    if (tx) handleSelectTransaction(tx);
+    clearSelectTransaction();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectTransactionId, transactions, clearSelectTransaction]);
+
   const closeAnomalyModal = () => {
     setAnomalyModalOpen(false);
     setSelectedAnomaly(null);
@@ -80,6 +113,9 @@ export default function Dashboard() {
   const handleApprove = async () => {
     if (!selectedAnomaly) return;
     const transactionId = selectedAnomaly.transaction.id;
+    logActivity(`${selectedAnomaly.transaction.merchant} 이상거래를 승인했습니다.`, {
+      icon: "check",
+    });
     removeFromActiveQueue(selectedAnomaly.id);
     setDeferredAnomalies((prev) => prev.filter((a) => a.id !== selectedAnomaly.id));
     closeAnomalyModal();
@@ -101,6 +137,9 @@ export default function Dashboard() {
       if (prev.some((a) => a.id === deferredItem.id)) return prev;
       return [...prev, deferredItem];
     });
+    logActivity(`${selectedAnomaly.transaction.merchant} 이상거래를 보류했습니다.`, {
+      icon: "clock",
+    });
     removeFromActiveQueue(selectedAnomaly.id);
     setExceptionModalOpen(false);
     closeAnomalyModal();
@@ -111,6 +150,9 @@ export default function Dashboard() {
   const handleCoApproval = async () => {
     if (!selectedAnomaly) return;
     const transactionId = selectedAnomaly.transaction.id;
+    logActivity(`${selectedAnomaly.transaction.merchant} 공동 승인을 요청했습니다.`, {
+      icon: "check",
+    });
     removeFromActiveQueue(selectedAnomaly.id);
     setDeferredAnomalies((prev) => prev.filter((a) => a.id !== selectedAnomaly.id));
     closeAnomalyModal();
@@ -139,6 +181,10 @@ export default function Dashboard() {
           ? { ...prev, relatedScheduleId: scheduleId, relatedSchedule: schedule.title }
           : null
       );
+      logActivity(
+        `${selectedAnomaly.transaction.merchant} 거래를 "${schedule.title}" 일정에 연결했습니다.`,
+        { icon: "calendar" }
+      );
     }
     removeFromActiveQueue(selectedAnomaly.id);
     setExceptionModalOpen(false);
@@ -149,6 +195,7 @@ export default function Dashboard() {
 
   const handleCategoryChange = async (category: BudgetCategory) => {
     if (!selectedAnomaly) return;
+    if (selectedAnomaly.transaction.category === category) return;
     const transactionId = selectedAnomaly.transaction.id;
     const update = (a: AuditAnomaly) =>
       a.id === selectedAnomaly.id
@@ -158,6 +205,10 @@ export default function Dashboard() {
     setDeferredAnomalies((prev) => prev.map(update));
     setSelectedAnomaly((prev) =>
       prev ? { ...prev, transaction: { ...prev.transaction, category } } : null
+    );
+    logActivity(
+      `${selectedAnomaly.transaction.merchant} 카테고리를 ${category}(으)로 변경했습니다.`,
+      { hasDogIcon: true }
     );
     await updateTransactionCategoryAction(transactionId, category);
     router.refresh();
@@ -169,23 +220,38 @@ export default function Dashboard() {
       const exists = prev.some((e) => e.id === saved.id);
       return exists ? prev.map((e) => (e.id === saved.id ? saved : e)) : [...prev, saved];
     });
+    logActivity(
+      event.id
+        ? `일정 "${saved.title}"을(를) 수정했습니다.`
+        : `새 일정 "${saved.title}"이(가) 등록되었습니다.`,
+      { icon: "calendar" }
+    );
     setEditingEvent(null);
     router.refresh();
   };
 
   const handleDeleteEvent = async (id: string) => {
+    const event = calendarEvents.find((e) => e.id === id);
     setCalendarEvents((prev) => prev.filter((e) => e.id !== id));
+    if (event) {
+      logActivity(`일정 "${event.title}"을(를) 삭제했습니다.`, { icon: "calendar" });
+    }
     setEditingEvent(null);
     await deleteScheduleAction(id);
     router.refresh();
   };
 
+  if (isEmptyDashboard) {
+    return <EmptyDashboard onCreateClub={openAddGroupModal} />;
+  }
+
+  const semester = currentOrganization?.semester ?? "2026년 1학기";
 
   return (
     <div className="min-w-0 space-y-10">
       <section className="dash-row-duo">
         <div className="dash-grid-cell min-w-0">
-          <HeroBudgetCard />
+          <HeroBudgetCard semester={semester} />
         </div>
         <div className="dash-grid-cell min-w-0">
           <AuditCard
@@ -225,14 +291,15 @@ export default function Dashboard() {
       <section className="dash-row-bottom">
         <div className="dash-grid-cell min-w-0">
           <RecentTransactions
-            transactions={transactions}
+            transactions={displayedTransactions}
+            searchQuery={query}
             onSelect={handleSelectTransaction}
             onAddReceipt={(tx) => router.push(`/receipts?transactionId=${tx.id}`)}
             onViewReceipt={() => router.push("/receipts")}
           />
         </div>
         <div className="dash-grid-cell min-w-0">
-          <ActivityFeedCard className="h-full min-h-0" />
+          <ActivityFeedCard activities={activities} className="h-full min-h-0" />
         </div>
       </section>
 
