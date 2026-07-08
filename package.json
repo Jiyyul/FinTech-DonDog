@@ -9,7 +9,8 @@
     "lint": "next lint",
     "db:seed": "npx tsx scripts/seed-db.ts",
     "classify": "npx tsx scripts/classify-payments.ts",
-    "predev": "npm run db:seed"
+    "classify:if-needed": "npx tsx scripts/classify-if-needed.ts",
+    "predev": "npm run db:seed && npm run classify:if-needed"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",

@@ -29,8 +29,8 @@ function main() {
   console.log(`DB 시드 완료: ${count}건 → data/dondok.db`);
   console.log(`현재 결제 건수: ${getPaymentCount()}`);
   console.log("");
-  console.log("결제 데이터 추가: data/payments.seed.json 수정 후 npm run db:seed");
-  console.log("AI 분류: npm run classify");
+  console.log("결제 데이터 추가: data/payments.seed.json 수정 후 npm run db:seed -- --force");
+  console.log("AI 분류: npm run dev 시 미분류 건 자동 분류 (또는 npm run classify)");
 }
 
 main();
