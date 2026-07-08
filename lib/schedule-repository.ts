@@ -1,0 +1,85 @@
+import { getSupabase } from "@/lib/supabase";
+import type { CalendarEvent } from "@/lib/dashboard-types";
+
+type ScheduleRow = {
+  id: string;
+  title: string;
+  event_date: string;
+  color: string;
+  description: string | null;
+};
+
+function mapSchedule(row: ScheduleRow): CalendarEvent {
+  const [year, month, date] = row.event_date.split("-").map(Number);
+  return {
+    id: row.id,
+    title: row.title,
+    date,
+    month,
+    year,
+    color: row.color,
+    description: row.description ?? undefined,
+  };
+}
+
+function toEventDate(event: { year: number; month: number; date: number }): string {
+  return `${event.year}-${String(event.month).padStart(2, "0")}-${String(event.date).padStart(2, "0")}`;
+}
+
+export async function getSchedules(): Promise<CalendarEvent[]> {
+  const db = getSupabase();
+  const { data, error } = await db
+    .from("schedules")
+    .select("*")
+    .order("event_date", { ascending: true });
+
+  if (error) throw new Error(`일정 조회 실패: ${error.message}`);
+  return (data as ScheduleRow[]).map(mapSchedule);
+}
+
+export async function saveSchedule(
+  event: Omit<CalendarEvent, "id"> & { id?: string }
+): Promise<CalendarEvent> {
+  const db = getSupabase();
+  const id = event.id ?? `ev-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+  const { data, error } = await db
+    .from("schedules")
+    .upsert(
+      {
+        id,
+        title: event.title,
+        event_date: toEventDate(event),
+        color: event.color,
+        description: event.description,
+      },
+      { onConflict: "id" }
+    )
+    .select("*")
+    .single();
+
+  if (error) throw new Error(`일정 저장 실패: ${error.message}`);
+  return mapSchedule(data as ScheduleRow);
+}
+
+export async function deleteSchedule(id: string): Promise<void> {
+  const db = getSupabase();
+  const { error } = await db.from("schedules").delete().eq("id", id);
+  if (error) throw new Error(`일정 삭제 실패: ${error.message}`);
+}
+
+export async function seedSchedulesIfEmpty(defaults: CalendarEvent[]): Promise<void> {
+  const existing = await getSchedules();
+  if (existing.length > 0) return;
+
+  const db = getSupabase();
+  const rows = defaults.map((event) => ({
+    id: event.id,
+    title: event.title,
+    event_date: toEventDate(event),
+    color: event.color,
+    description: event.description,
+  }));
+  const { error } = await db.from("schedules").insert(rows);
+  if (error) throw new Error(`일정 시드 실패: ${error.message}`);
+}
