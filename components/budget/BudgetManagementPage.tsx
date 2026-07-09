@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight } from "lucide-react";
@@ -8,7 +8,11 @@ import Card from "@/components/common/Card";
 import Button from "@/components/common/Button";
 import type { BudgetCategory } from "@/lib/dashboard-types";
 import { formatCurrency } from "@/lib/format";
-import { updateCategoryBudgetAction, updateTotalBudgetAction } from "@/lib/actions/budget-actions";
+import {
+  updateCategoryBudgetAction,
+  updateTotalBudgetAction,
+  updateAnomalyThresholdAction,
+} from "@/lib/actions/budget-actions";
 import { useAuth } from "@/components/providers/AuthProvider";
 import type { BudgetPageData } from "@/lib/get-budget-data";
 
@@ -20,10 +24,13 @@ const inputClass =
 export default function BudgetManagementPage({ data }: { data: BudgetPageData }) {
   const router = useRouter();
   const { canEdit } = useAuth();
-  const { totalBudget, totalUsed, categories, history, months, monthlyByCategory } = data;
+  const { totalBudget, totalUsed, anomalyThreshold, categories, history, months, monthlyByCategory } =
+    data;
 
   const [totalBudgetInput, setTotalBudgetInput] = useState(String(totalBudget));
+  const [anomalyThresholdInput, setAnomalyThresholdInput] = useState(String(anomalyThreshold));
   const [saving, setSaving] = useState(false);
+  const [savingThreshold, setSavingThreshold] = useState(false);
   const [trendFilter, setTrendFilter] = useState<TrendFilter>("전체");
   const [categoryInputs, setCategoryInputs] = useState<Record<string, string>>(() =>
     Object.fromEntries(categories.map((c) => [c.category, String(c.budget)]))
@@ -42,6 +49,18 @@ export default function BudgetManagementPage({ data }: { data: BudgetPageData })
       router.refresh();
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleAnomalyThresholdSave = async () => {
+    const next = Number(anomalyThresholdInput);
+    if (!Number.isFinite(next) || next <= 0 || next === anomalyThreshold) return;
+    setSavingThreshold(true);
+    try {
+      await updateAnomalyThresholdAction(next);
+      router.refresh();
+    } finally {
+      setSavingThreshold(false);
     }
   };
 
@@ -95,6 +114,33 @@ export default function BudgetManagementPage({ data }: { data: BudgetPageData })
         </p>
       </Card>
 
+      <Card className="mb-8">
+        <p className="mb-3 text-[13px] text-muted">이상감지 기준 금액</p>
+        <div className="flex flex-wrap items-end gap-3">
+          <input
+            type="number"
+            value={anomalyThresholdInput}
+            onChange={(e) => setAnomalyThresholdInput(e.target.value)}
+            className={`min-w-[12rem] flex-1 ${inputClass}`}
+            min={1}
+          />
+          <Button
+            type="button"
+            variant="primary"
+            onClick={handleAnomalyThresholdSave}
+            disabled={!canEdit || savingThreshold}
+          >
+            {savingThreshold ? "저장 중..." : "저장"}
+          </Button>
+        </div>
+        <p className="mt-3 text-[clamp(1.5rem,2.5vw,2rem)] font-bold tabular-nums text-navy">
+          {formatCurrency(anomalyThreshold)}
+        </p>
+        <p className="mt-1 text-[13px] text-muted">
+          이 금액 이상 결제 시 AI 이상감지 및 공동 승인 검토 대상으로 분류됩니다.
+        </p>
+      </Card>
+
       <div className="space-y-4">
         {categories.map((item) => (
           <Card key={item.category}>
@@ -122,7 +168,7 @@ export default function BudgetManagementPage({ data }: { data: BudgetPageData })
                 type="button"
                 variant="secondary"
                 onClick={() => handleCategoryBudgetSave(item.category)}
-                disabled={savingCategory === item.category}
+                disabled={!canEdit || savingCategory === item.category}
               >
                 {savingCategory === item.category ? "저장 중..." : "예산 저장"}
               </Button>

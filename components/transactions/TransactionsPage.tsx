@@ -126,6 +126,9 @@ export default function TransactionsPage() {
         open={!!selected}
         transaction={selected}
         onClose={() => setSelected(null)}
+        onCategoryChange={(category) => {
+          setSelected((prev) => (prev ? { ...prev, category } : null));
+        }}
       />
     </div>
   );

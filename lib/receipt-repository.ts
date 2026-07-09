@@ -1,6 +1,7 @@
 import { getSupabase } from "@/lib/supabase";
 import { paymentIdToTransactionId, transactionIdToPaymentId } from "@/lib/payment-types";
-import { createPayment } from "@/lib/payment-repository";
+import { createPayment, saveClassifications } from "@/lib/payment-repository";
+import { normalizeReceiptCategory } from "@/lib/receipt-category";
 import type { ParsedReceipt, Receipt, ReceiptItem } from "@/lib/receipts/receipt-types";
 
 type ReceiptRow = {
@@ -98,6 +99,14 @@ export async function saveReceipt(
       paymentMethod: data.paymentMethod ?? undefined,
     });
     linkedPaymentId = payment.id;
+    await saveClassifications([
+      {
+        paymentId: payment.id,
+        category: normalizeReceiptCategory(data.category),
+        confidence: data.confidence ?? 90,
+        source: "receipt",
+      },
+    ]);
   }
 
   const id = `receipt_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;

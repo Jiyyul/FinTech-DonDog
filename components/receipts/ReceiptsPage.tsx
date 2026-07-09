@@ -10,6 +10,7 @@ import ReceiptPreview from "@/components/receipts/ReceiptPreview";
 import ReceiptUploadCard from "@/components/receipts/ReceiptUploadCard";
 import { saveReceiptAction } from "@/lib/actions/receipt-actions";
 import { useAuth } from "@/components/providers/AuthProvider";
+import { useDashboardData } from "@/components/providers/DashboardDataProvider";
 import { matchReceiptToTransactions } from "@/lib/receipts/receipt-matching";
 import { parseReceipt } from "@/lib/receipts/receipt-parser";
 import type { ParsedReceipt, Receipt } from "@/lib/receipts/receipt-types";
@@ -37,6 +38,7 @@ export default function ReceiptsPage({
 }: ReceiptsPageProps) {
   const router = useRouter();
   const { canEdit } = useAuth();
+  const { prependTransaction } = useDashboardData();
   const transactions = initialTransactions;
   const [receipts, setReceipts] = useState(initialReceipts);
   const lockedTransactionId = initialTransactionId;
@@ -123,13 +125,14 @@ export default function ReceiptsPage({
       const imageDataUrl = file.type.startsWith("image/")
         ? await fileToDataUrl(file).catch(() => null)
         : null;
-      const receipt = await saveReceiptAction(
+      const { receipt, transaction } = await saveReceiptAction(
         parsed,
         { name: file.name, type: file.type, size: file.size },
         linkTransactionId,
         imageDataUrl
       );
       setReceipts((prev) => [receipt, ...prev]);
+      if (transaction) prependTransaction(transaction);
       if (lockedTransactionId) {
         router.push("/");
         router.refresh();

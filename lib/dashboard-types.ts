@@ -10,6 +10,8 @@ export type BudgetCategory =
   | "홍보비"
   | "기타";
 
+export type BudgetTrendFilter = "전체" | BudgetCategory;
+
 export type AnomalyType =
   | "schedule_mismatch"
   | "amount_threshold"

@@ -1,26 +1,32 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import Button from "@/components/common/Button";
+import CategorySelectField from "@/components/common/CategorySelectField";
 import StatusBadge from "@/components/common/StatusBadge";
 import AIMessage from "@/components/common/AIMessage";
+import { updateTransactionCategoryAction } from "@/lib/actions/classification-actions";
 import { formatCurrency } from "@/lib/format";
-import type { DashboardTransaction } from "@/lib/dashboard-types";
+import type { BudgetCategory, DashboardTransaction } from "@/lib/dashboard-types";
 
 type TransactionDrawerProps = {
   open: boolean;
   transaction: DashboardTransaction | null;
   onClose: () => void;
+  onCategoryChange?: (category: BudgetCategory) => void;
 };
 
 export default function TransactionDrawer({
   open,
   transaction,
   onClose,
+  onCategoryChange,
 }: TransactionDrawerProps) {
   const router = useRouter();
+  const [category, setCategory] = useState<BudgetCategory | null>(null);
+  const [savingCategory, setSavingCategory] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -33,105 +39,113 @@ export default function TransactionDrawer({
     };
   }, [open]);
 
+  useEffect(() => {
+    setCategory(transaction?.category ?? null);
+  }, [transaction?.id, transaction?.category]);
+
+  const handleCategoryChange = async (next: BudgetCategory) => {
+    if (!transaction || next === category || savingCategory) return;
+    const previous = category ?? transaction.category;
+    setCategory(next);
+    setSavingCategory(true);
+    try {
+      await updateTransactionCategoryAction(transaction.id, next);
+      onCategoryChange?.(next);
+      router.refresh();
+    } catch {
+      setCategory(previous);
+    } finally {
+      setSavingCategory(false);
+    }
+  };
+
+  if (!open || !transaction) return null;
+
   return (
     <>
       <div
+        className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-sm"
         onClick={onClose}
-        className={`fixed inset-0 z-[60] bg-black/25 backdrop-blur-sm transition-opacity duration-300 ${
-          open ? "opacity-100" : "pointer-events-none opacity-0"
-        }`}
         aria-hidden
       />
-      <aside
-        className={`fixed right-0 top-0 z-[70] flex h-screen w-full max-w-[400px] flex-col border-l border-hairline bg-card shadow-[-4px_0_32px_rgba(16,24,40,0.06)] transition-transform duration-300 ease-premium ${
-          open ? "translate-x-0" : "translate-x-full"
-        }`}
+      <div
+        className="fixed left-1/2 top-1/2 z-[70] flex max-h-[90vh] w-[min(520px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-modal border border-hairline bg-card shadow-card-hover animate-chat-open"
         role="dialog"
         aria-modal
-        aria-label="거래 상세정보"
+        aria-labelledby="transaction-detail-title"
       >
-        {transaction && (
-          <>
-            <div className="flex items-center justify-between border-b border-hairline px-7 py-5">
-              <h2 className="text-[16px] font-semibold tracking-title-tight text-navy">
-                거래 상세정보
-              </h2>
-              <button
-                type="button"
-                onClick={onClose}
-                className="ui-icon-btn"
-                aria-label="닫기"
-              >
-                <X size={18} strokeWidth={1.5} />
-              </button>
+        <div className="flex items-center justify-between border-b border-hairline px-6 py-5">
+          <h2
+            id="transaction-detail-title"
+            className="text-[18px] font-semibold tracking-title-tight text-navy"
+          >
+            거래 상세정보
+          </h2>
+          <button type="button" onClick={onClose} className="ui-icon-btn" aria-label="닫기">
+            <X size={20} strokeWidth={1.75} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-6 py-6">
+          <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-[28px] font-semibold tracking-title-tight text-navy tabular-nums">
+                {formatCurrency(transaction.amount)}
+              </p>
+              <p className="mt-1 text-[15px] font-medium text-ink">{transaction.merchant}</p>
             </div>
+            <StatusBadge status={transaction.status} />
+          </div>
 
-            <div className="flex-1 overflow-y-auto px-7 py-6">
-              <div className="mb-6">
-                <p className="text-[28px] font-semibold tracking-title-tight text-navy tabular-nums">
-                  {formatCurrency(transaction.amount)}
-                </p>
-                <p className="mt-1 text-[15px] font-medium text-ink">
-                  {transaction.merchant}
-                </p>
-                <div className="mt-3">
-                  <StatusBadge status={transaction.status} />
-                </div>
-              </div>
+          <div className="border-t border-hairline pt-6">
+            <CategorySelectField
+              label="카테고리"
+              value={category ?? transaction.category}
+              onChange={handleCategoryChange}
+              disabled={savingCategory}
+            />
+          </div>
 
-              <div className="space-y-4 border-t border-hairline pt-6">
-                <DrawerField label="AI 분류" value={transaction.category} />
-                <DrawerField label="날짜" value={transaction.dateLabel} />
-                <DrawerField
-                  label="거래 후 잔액"
-                  value={formatCurrency(transaction.balance)}
-                />
-                <DrawerField
-                  label="결제수단"
-                  value={transaction.paymentMethod ?? "-"}
-                />
-                <DrawerField
-                  label="거래번호"
-                  value={transaction.transactionId ?? "-"}
-                />
-              </div>
+          <div className="mt-4 grid grid-cols-2 gap-4">
+            <DetailField label="날짜" value={transaction.dateLabel} />
+            <DetailField label="거래 후 잔액" value={formatCurrency(transaction.balance)} />
+            <DetailField label="결제수단" value={transaction.paymentMethod ?? "-"} />
+            <DetailField label="거래번호" value={transaction.transactionId ?? "-"} />
+          </div>
 
-              <div className="mt-6 rounded-2xl bg-surface p-4 ring-1 ring-hairline">
-                <AIMessage>
-                  {transaction.category}로 분류했어요.
-                  {transaction.aiConfidence
-                    ? ` 신뢰도 ${transaction.aiConfidence}%`
-                    : ""}
-                </AIMessage>
-              </div>
-            </div>
+          <div className="mt-6 rounded-2xl bg-surface p-4 ring-1 ring-hairline">
+            <AIMessage>
+              {category ?? transaction.category}(으)로 분류되어 있어요.
+              {transaction.aiConfidence ? ` AI 신뢰도 ${transaction.aiConfidence}%` : ""}
+              {savingCategory ? " 저장 중..." : ""}
+            </AIMessage>
+          </div>
+        </div>
 
-            <div className="border-t border-hairline px-7 py-4">
-              {transaction.status === "review" ? (
-                <Button
-                  variant="primary"
-                  className="w-full"
-                  onClick={() => {
-                    onClose();
-                    router.push("/audit");
-                  }}
-                >
-                  검토하기
-                </Button>
-              ) : (
-                <Button variant="secondary" className="w-full" onClick={onClose}>
-                  닫기
-                </Button>
-              )}
-            </div>
-          </>
-        )}
-      </aside>
+        <div className="border-t border-hairline px-6 py-4">
+          {transaction.status === "review" ? (
+            <Button
+              variant="primary"
+              className="w-full"
+              onClick={() => {
+                onClose();
+                router.push("/audit");
+              }}
+            >
+              검토하기
+            </Button>
+          ) : (
+            <Button variant="secondary" className="w-full" onClick={onClose}>
+              닫기
+            </Button>
+          )}
+        </div>
+      </div>
     </>
   );
 }
 
-function DrawerField({ label, value }: { label: string; value: string }) {
+function DetailField({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <p className="text-[13px] text-muted">{label}</p>

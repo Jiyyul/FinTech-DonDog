@@ -2,6 +2,8 @@ import { getSupabase } from "@/lib/supabase";
 import { buildCategoryBudgetsFromTotal } from "@/lib/group-budget";
 import type { BudgetCategory } from "@/lib/dashboard-types";
 
+import { DEFAULT_ANOMALY_THRESHOLD } from "@/lib/budget-constants";
+
 export type BudgetHistoryItem = {
   id: string;
   date: string;
@@ -12,6 +14,42 @@ export type BudgetHistoryItem = {
   type: "budget_change" | "ai_review";
   label?: string;
 };
+
+export async function getAnomalyThreshold(groupId: number): Promise<number> {
+  const db = getSupabase();
+  const { data, error } = await db
+    .from("budget_total")
+    .select("anomaly_threshold_amount")
+    .eq("group_id", groupId)
+    .maybeSingle();
+  if (error) throw new Error(`이상감지 기준 금액 조회 실패: ${error.message}`);
+  return data?.anomaly_threshold_amount ?? DEFAULT_ANOMALY_THRESHOLD;
+}
+
+export async function setAnomalyThreshold(
+  groupId: number,
+  nextAmount: number,
+  actor?: string
+): Promise<void> {
+  const db = getSupabase();
+  const current = await getAnomalyThreshold(groupId);
+
+  const { error: upsertError } = await db
+    .from("budget_total")
+    .update({ anomaly_threshold_amount: nextAmount })
+    .eq("group_id", groupId);
+  if (upsertError) throw new Error(`이상감지 기준 금액 저장 실패: ${upsertError.message}`);
+
+  const { error: historyError } = await db.from("budget_history").insert({
+    group_id: groupId,
+    category: "이상감지 기준 금액",
+    from_amount: current,
+    to_amount: nextAmount,
+    actor,
+    type: "budget_change",
+  });
+  if (historyError) throw new Error(`예산 변경 이력 저장 실패: ${historyError.message}`);
+}
 
 export async function initializeGroupBudget(groupId: number, totalBudget: number): Promise<void> {
   const db = getSupabase();
@@ -144,11 +182,19 @@ export async function setCategoryBudget(
 export async function seedBudgetDefaults(
   groupId: number,
   totalBudget: number,
-  categoryBudgets: Record<string, number>
+  categoryBudgets: Record<string, number>,
+  anomalyThreshold: number = DEFAULT_ANOMALY_THRESHOLD
 ): Promise<void> {
   const existingTotal = await getBudgetTotal(groupId);
   if (existingTotal === 0) {
     await initializeGroupBudget(groupId, totalBudget);
+    if (anomalyThreshold !== DEFAULT_ANOMALY_THRESHOLD) {
+      const { error } = await getSupabase()
+        .from("budget_total")
+        .update({ anomaly_threshold_amount: anomalyThreshold })
+        .eq("group_id", groupId);
+      if (error) throw new Error(`이상감지 기준 금액 시드 실패: ${error.message}`);
+    }
     return;
   }
 

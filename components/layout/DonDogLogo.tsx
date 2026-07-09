@@ -10,7 +10,7 @@ export default function DonDogLogo() {
     <Link
       href="/dashboard"
       className="sidebar-logo-block rounded-xl transition-opacity duration-200 hover:opacity-80"
-      aria-label="돈독 홈으로 이동"
+      aria-label="돈독 서비스 소개로 이동"
     >
       <div className="sidebar-logo-mark flex shrink-0 items-center justify-center p-1">
         <Image

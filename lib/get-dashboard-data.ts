@@ -7,10 +7,10 @@ import {
   buildAnomalyQueue,
   buildBudgetSlices,
   buildBudgetStats,
+  buildCategoryMonthlyTrend,
   buildMonthlyBudgetTrend,
   buildTransactionsFromPayments,
   AI_CHAT_SUGGESTIONS,
-  AMOUNT_THRESHOLD_EXPORT,
 } from "@/lib/build-dashboard-from-payments";
 import { buildClassificationMap } from "@/lib/classify-payments";
 import type {
@@ -27,7 +27,7 @@ import {
   getAllPayments,
   getClassifications,
 } from "@/lib/payment-repository";
-import { getBudgetCategories, getBudgetTotal } from "@/lib/budget-repository";
+import { getBudgetCategories, getBudgetTotal, getAnomalyThreshold } from "@/lib/budget-repository";
 import { getReviewStatusMap } from "@/lib/review-repository";
 import { getLinkedPaymentIds } from "@/lib/receipt-repository";
 import { getSchedules } from "@/lib/schedule-repository";
@@ -49,10 +49,23 @@ export type DashboardData = {
   aiReportSummary: AIReportSummary;
   activityFeed: ActivityItem[];
   monthlyBudgetTrend: MonthlyBudgetPoint[];
+  categoryMonthlyTrend: Record<string, MonthlyBudgetPoint[]>;
   calendarEvents: CalendarEvent[];
   aiChatSuggestions: string[];
   currentAccountBalance: number;
 };
+
+export async function findDashboardTransaction(
+  groupId: number,
+  transactionId: string
+): Promise<DashboardTransaction | null> {
+  const data = await getDashboardData(groupId);
+  return (
+    data.allTransactions.find((tx) => tx.id === transactionId) ??
+    data.recentTransactions.find((tx) => tx.id === transactionId) ??
+    null
+  );
+}
 
 export async function getDashboardData(groupId: number): Promise<DashboardData> {
   const [
@@ -60,6 +73,7 @@ export async function getDashboardData(groupId: number): Promise<DashboardData> 
     classifications,
     budgetTotal,
     categoryBudgets,
+    anomalyThreshold,
     reviewStatusMap,
     linkedPaymentIds,
     balances,
@@ -69,6 +83,7 @@ export async function getDashboardData(groupId: number): Promise<DashboardData> 
     getClassifications(groupId),
     getBudgetTotal(groupId),
     getBudgetCategories(groupId),
+    getAnomalyThreshold(groupId),
     getReviewStatusMap(groupId),
     getLinkedPaymentIds(groupId),
     getAccountBalances(groupId),
@@ -78,9 +93,25 @@ export async function getDashboardData(groupId: number): Promise<DashboardData> 
   const classificationMap = buildClassificationMap(classifications);
   const { initial, current } = balances;
 
-  const transactions = buildTransactionsFromPayments(payments, classificationMap, linkedPaymentIds);
-  const allTx = buildAllTransactions(payments, classificationMap, linkedPaymentIds);
-  const anomalies = buildAnomalyQueue(transactions, budgetTotal, calendarEvents, reviewStatusMap);
+  const transactions = buildTransactionsFromPayments(
+    payments,
+    classificationMap,
+    linkedPaymentIds,
+    anomalyThreshold
+  );
+  const allTx = buildAllTransactions(
+    payments,
+    classificationMap,
+    linkedPaymentIds,
+    anomalyThreshold
+  );
+  const anomalies = buildAnomalyQueue(
+    transactions,
+    budgetTotal,
+    calendarEvents,
+    reviewStatusMap,
+    anomalyThreshold
+  );
   const pendingIds = new Set(anomalies.map((a) => a.transaction.id));
   const budgetStats = buildBudgetStats(transactions, budgetTotal, pendingIds);
   const committedTransactions = transactions.filter((t) => !pendingIds.has(t.id));
@@ -88,6 +119,7 @@ export async function getDashboardData(groupId: number): Promise<DashboardData> 
   const report = buildAiReportSummary(transactions, anomalies, current, categoryBudgets);
   const activity = buildActivityFeed(transactions);
   const monthlyTrend = buildMonthlyBudgetTrend(payments, budgetTotal, initial);
+  const categoryMonthlyTrend = buildCategoryMonthlyTrend(allTx, categoryBudgets);
 
   const pendingAuditTransaction =
     transactions.find((t) => t.status === "review") ?? transactions[0] ?? null;
@@ -101,7 +133,7 @@ export async function getDashboardData(groupId: number): Promise<DashboardData> 
     budgetRemaining: budgetStats.remaining,
     budgetUsagePercent: budgetStats.usagePercent,
     budgetUsageSpeedPercent: hasPayments ? budgetStats.usageSpeedPercent : 0,
-    amountThreshold: AMOUNT_THRESHOLD_EXPORT,
+    amountThreshold: anomalyThreshold,
     doughnutCenterPercent: budgetStats.doughnutCenterPercent,
     budgetSlices: slices,
     pendingAuditTransaction,
@@ -121,6 +153,7 @@ export async function getDashboardData(groupId: number): Promise<DashboardData> 
         ]
       : [],
     monthlyBudgetTrend: monthlyTrend,
+    categoryMonthlyTrend,
     calendarEvents: hasPayments ? calendarEvents : [],
     aiChatSuggestions: AI_CHAT_SUGGESTIONS,
     currentAccountBalance: current,

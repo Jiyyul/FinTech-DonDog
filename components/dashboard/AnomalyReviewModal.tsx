@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { X } from "lucide-react";
 import Button from "@/components/common/Button";
+import CategorySelectField from "@/components/common/CategorySelectField";
 import AIMessage from "@/components/common/AIMessage";
 import StatusBadge from "@/components/common/StatusBadge";
 import { formatCurrency } from "@/lib/format";
@@ -22,15 +23,6 @@ type AnomalyReviewModalProps = {
   onRequestCoApproval?: () => void;
   onCategoryChange?: (category: BudgetCategory) => void;
 };
-
-const CATEGORIES: BudgetCategory[] = [
-  "행사비",
-  "식비",
-  "운영비",
-  "교통비",
-  "장비비",
-  "기타",
-];
 
 export default function AnomalyReviewModal({
   open,
@@ -57,7 +49,6 @@ export default function AnomalyReviewModal({
 
   const tx = anomaly.transaction;
   const isAmountThreshold = anomaly.type === "amount_threshold";
-  const isLowConfidence = anomaly.type === "low_confidence";
 
   return (
     <>
@@ -125,20 +116,13 @@ export default function AnomalyReviewModal({
             <AIMessage>{tx.category}로 분류했어요.</AIMessage>
           </div>
 
-          {isLowConfidence && onCategoryChange && (
+          {onCategoryChange && (
             <div className="mt-4">
-              <label className="mb-1.5 block text-[13px] text-muted">카테고리 변경</label>
-              <select
+              <CategorySelectField
+                label="카테고리 변경"
                 value={tx.category}
-                onChange={(e) => onCategoryChange(e.target.value as BudgetCategory)}
-                className="h-12 w-full rounded-btn border border-hairline bg-card px-4 text-[14px] outline-none transition-colors focus:border-brand"
-              >
-                {CATEGORIES.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
-                ))}
-              </select>
+                onChange={onCategoryChange}
+              />
             </div>
           )}
         </div>

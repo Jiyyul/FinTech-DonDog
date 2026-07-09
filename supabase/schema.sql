@@ -101,6 +101,9 @@ create table if not exists budget_categories (
   primary key (group_id, category)
 );
 
+-- 기존 프로젝트에 컬럼이 없을 때만 추가
+alter table budget_total add column if not exists anomaly_threshold_amount integer not null default 300000;
+
 create table if not exists budget_history (
   id bigint generated always as identity primary key,
   group_id bigint not null references groups (id) on delete cascade,

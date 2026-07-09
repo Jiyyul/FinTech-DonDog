@@ -40,7 +40,8 @@ export default function Dashboard() {
   const {
     anomalyQueue,
     calendarEvents: initialCalendarEvents,
-    recentTransactions: transactions,
+    recentTransactions,
+    allTransactions,
     activityFeed,
     logActivity,
   } = useDashboardData();
@@ -83,20 +84,28 @@ export default function Dashboard() {
     setTxDrawerOpen(true);
   };
 
-  const displayedTransactions = useMemo(() => {
-    if (!query.trim()) return transactions;
-    return transactions.filter((tx) => matchesSearch(tx, query));
-  }, [transactions, query]);
+  const filteredRecent = useMemo(() => {
+    if (!query.trim()) return recentTransactions;
+    return allTransactions.filter((tx) => matchesSearch(tx, query)).slice(0, 4);
+  }, [recentTransactions, allTransactions, query]);
+
+  const filteredAll = useMemo(() => {
+    const newestFirst = [...allTransactions].reverse();
+    if (!query.trim()) return newestFirst;
+    return newestFirst.filter((tx) => matchesSearch(tx, query));
+  }, [allTransactions, query]);
+
+  const displayedTransactions = filteredRecent;
 
   useEffect(() => {
     if (!selectTransactionId) return;
 
-    const tx = transactions.find((t) => t.id === selectTransactionId);
+    const tx = allTransactions.find((t) => t.id === selectTransactionId);
 
     if (tx) handleSelectTransaction(tx);
     clearSelectTransaction();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectTransactionId, transactions, clearSelectTransaction]);
+  }, [selectTransactionId, allTransactions, clearSelectTransaction]);
 
   const closeAnomalyModal = () => {
     setAnomalyModalOpen(false);
@@ -287,7 +296,7 @@ export default function Dashboard() {
         <div className="dash-grid-cell min-w-0">
           <RecentTransactions
             transactions={displayedTransactions}
-            searchQuery={query}
+            allTransactions={filteredAll}
             onSelect={handleSelectTransaction}
             showReceiptActions={canEdit}
             onAddReceipt={(tx) => {
@@ -343,6 +352,9 @@ export default function Dashboard() {
         onClose={() => {
           setTxDrawerOpen(false);
           setSelectedTx(null);
+        }}
+        onCategoryChange={(category) => {
+          setSelectedTx((prev) => (prev ? { ...prev, category } : null));
         }}
       />
 
