@@ -52,7 +52,6 @@ export const ANOMALY_QUEUE: AuditAnomaly[] = [
     transaction: MT_TRANSACTION,
     reason:
       "학생 MT 일정(7월 12일)이 등록되어 있으나, 관련 거래 패턴과 일정 시점이 일치하지 않습니다.",
-    confidence: 92,
     relatedSchedule: "학생회 MT",
     relatedScheduleId: "ev-1",
   },
@@ -61,7 +60,6 @@ export const ANOMALY_QUEUE: AuditAnomaly[] = [
     type: "amount_threshold",
     transaction: MT_TRANSACTION,
     reason: `₩${AMOUNT_THRESHOLD.toLocaleString()}원 이상 결제로 공동 승인이 필요합니다.`,
-    confidence: 99,
     ruleReference: "학생회 회칙 제3조 — 30만원 이상 결제는 공동 승인 필요",
   },
   {
@@ -81,7 +79,6 @@ export const ANOMALY_QUEUE: AuditAnomaly[] = [
       aiConfidence: 72,
     },
     reason: "AI 분류 신뢰도가 80% 이하입니다. 카테고리를 확인해 주세요.",
-    confidence: 72,
   },
   {
     id: "anomaly-4",
@@ -100,7 +97,6 @@ export const ANOMALY_QUEUE: AuditAnomaly[] = [
       aiConfidence: 88,
     },
     reason: "회칙상 식비 1인당 20,000원 한도를 초과했을 가능성이 있습니다. (1인당 약 45,000원)",
-    confidence: 88,
     ruleReference: "식비 1인당 20,000원",
   },
   {
@@ -122,7 +118,6 @@ export const ANOMALY_QUEUE: AuditAnomaly[] = [
     },
     reason:
       "동일 가맹점·동일 금액(₩850,000) 거래가 7월 2일에 이미 처리되었습니다. 중복 결제 여부를 확인해 주세요.",
-    confidence: 94,
     ruleReference: "TX-20260702-001",
   },
 ];
@@ -257,12 +252,19 @@ export const MONTHLY_BUDGET_TREND: MonthlyBudgetPoint[] = enrichTrendWithMoM([
 
 export const AI_REPORT_SUMMARY: AIReportSummary = {
   confidence: 98,
+  totalMoM: 3.4,
   foodMoM: -4.2,
   eventMoM: 8.1,
   opsMoM: 2.3,
+  trafficMoM: 1.1,
   overBudgetItems: ["행사비"],
   ruleViolations: 1,
+  coApprovalRequired: 2,
   anomalyCount: 3,
+  recommendations: [
+    "행사비 지출 속도를 점검해 보세요.",
+    "공동 승인이 필요한 결제 2건을 확인해 주세요.",
+  ],
   lines: [
     "전달 대비 식비는 4.2% 감소했습니다.",
     "전달 대비 행사비는 8.1% 증가했습니다.",

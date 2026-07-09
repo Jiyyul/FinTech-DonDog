@@ -129,7 +129,6 @@ export function buildAnomalyQueue(
       type: "low_confidence",
       transaction: lowConfidence,
       reason: "AI 분류 신뢰도가 80% 이하입니다. 카테고리를 확인해 주세요.",
-      confidence: lowConfidence.aiConfidence ?? 72,
     });
   }
 
@@ -143,16 +142,45 @@ export function buildActivityFeed(
   const recent = transactions.slice(0, 3);
   return recent.map((tx, i) => ({
     id: `act-${i + 1}`,
-    time: i === 0 ? "3분 전" : i === 1 ? "12분 전" : "35분 전",
+    time: tx.dateLabel,
     message: `${tx.merchant}을(를) ${tx.category}(으)로 분류했습니다.`,
     hasDogIcon: true,
   }));
 }
 
+function monthOf(date: string): string {
+  return date.slice(0, 7);
+}
+
+function sumForMonth(
+  transactions: DashboardTransaction[],
+  month: string,
+  categories?: string[]
+): number {
+  return transactions
+    .filter((t) => monthOf(t.date) === month && (!categories || categories.includes(t.category)))
+    .reduce((sum, t) => sum + t.amount, 0);
+}
+
+/** 직전 달 대비 변화율(%). 비교할 이전 달 데이터가 없으면 null. */
+function computeMoM(transactions: DashboardTransaction[], categories?: string[]): number | null {
+  const months = [...new Set(transactions.map((t) => monthOf(t.date)))].sort();
+  if (months.length < 2) return null;
+
+  const latest = months[months.length - 1];
+  const prev = months[months.length - 2];
+  const prevTotal = sumForMonth(transactions, prev, categories);
+  const latestTotal = sumForMonth(transactions, latest, categories);
+
+  if (prevTotal === 0) return latestTotal > 0 ? 100 : 0;
+  return Math.round(((latestTotal - prevTotal) / prevTotal) * 1000) / 10;
+}
+
 export function buildAiReportSummary(
   transactions: DashboardTransaction[],
-  anomalyCount: number,
-  currentBalance: number
+  anomalies: AuditAnomaly[],
+  currentBalance: number,
+  categoryBudgets: Record<string, number>
 ): AIReportSummary {
   const slices = buildBudgetSlices(transactions);
   const food = slices.find((s) => s.category === "식비")?.percent ?? 0;
@@ -160,18 +188,68 @@ export function buildAiReportSummary(
     (slices.find((s) => s.category === "장소대여비")?.percent ?? 0) +
     (slices.find((s) => s.category === "행사비")?.percent ?? 0);
 
+  const confidences = transactions
+    .map((t) => t.aiConfidence)
+    .filter((c): c is number => c != null);
+  const confidence = confidences.length
+    ? Math.round(confidences.reduce((sum, c) => sum + c, 0) / confidences.length)
+    : 0;
+
+  const totalMoM = computeMoM(transactions);
+  const foodMoM = computeMoM(transactions, ["식비"]);
+  const eventMoM = computeMoM(transactions, ["행사비", "장소대여비"]);
+  const opsMoM = computeMoM(transactions, ["운영비"]);
+  const trafficMoM = computeMoM(transactions, ["교통비"]);
+
+  const overBudgetItems = slices
+    .filter((s) => (categoryBudgets[s.category] ?? 0) > 0 && s.amount > categoryBudgets[s.category])
+    .map((s) => s.category);
+
+  const ruleViolations = anomalies.filter((a) => a.type === "rule_violation").length;
+  const coApprovalRequired = anomalies.filter((a) => a.type === "amount_threshold").length;
+
+  const recommendations: string[] = [];
+  if (overBudgetItems.length > 0) {
+    recommendations.push(
+      `${overBudgetItems.join(", ")} 예산을 초과했어요. 지출 속도를 조절하는 것을 추천합니다.`
+    );
+  }
+  if (coApprovalRequired > 0) {
+    recommendations.push(`공동 승인이 필요한 거래가 ${coApprovalRequired}건 있습니다.`);
+  }
+  const growthEntries: Array<[string, number | null]> = [
+    ["식비", foodMoM],
+    ["행사비", eventMoM],
+    ["운영비", opsMoM],
+    ["교통비", trafficMoM],
+  ];
+  const shrinking = growthEntries.filter(
+    (entry): entry is [string, number] => entry[1] != null && entry[1] < 0
+  );
+  if (shrinking.length > 0) {
+    const [label] = shrinking.reduce((min, cur) => (cur[1] < min[1] ? cur : min));
+    recommendations.push(`${label} 지출은 전달보다 줄어 여유가 있는 편입니다.`);
+  }
+  if (recommendations.length === 0) {
+    recommendations.push("현재 특별한 예산 위험 신호는 없습니다.");
+  }
+
   return {
-    confidence: 97,
-    foodMoM: -4.2,
-    eventMoM: 8.1,
-    opsMoM: 2.3,
-    overBudgetItems: event > 40 ? ["장소대여비"] : [],
-    ruleViolations: transactions.filter((t) => t.amount >= AMOUNT_THRESHOLD).length,
-    anomalyCount,
+    confidence,
+    totalMoM,
+    foodMoM,
+    eventMoM,
+    opsMoM,
+    trafficMoM,
+    overBudgetItems,
+    ruleViolations,
+    coApprovalRequired,
+    anomalyCount: anomalies.length,
+    recommendations,
     lines: [
       `식비 비중 ${food}%입니다.`,
       `장소대여·행사 관련 지출 비중 ${event}%입니다.`,
-      `이상 거래 ${anomalyCount}건이 감지되었습니다.`,
+      `이상 거래 ${anomalies.length}건이 감지되었습니다.`,
       `현재 계좌 잔액 ₩${currentBalance.toLocaleString()}입니다.`,
     ],
   };

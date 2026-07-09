@@ -43,7 +43,8 @@ function ReportMetric({
   );
 }
 
-function momTone(rate: number): MetricTone {
+function momTone(rate: number | null): MetricTone {
+  if (rate == null) return "navy";
   if (rate < 0) return "success";
   if (rate >= 5) return "warning";
   return "navy";

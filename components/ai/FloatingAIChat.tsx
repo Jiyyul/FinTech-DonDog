@@ -13,32 +13,50 @@ type Message = {
 };
 
 export default function FloatingAIChat() {
-  const { aiChatSuggestions, aiChatResponses } = useDashboardData();
+  const { aiChatSuggestions } = useDashboardData();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const sendMessage = (text: string) => {
-    if (!text.trim()) return;
+  const sendMessage = async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || isLoading) return;
 
     const userMsg: Message = {
       id: `u-${Date.now()}`,
       role: "user",
-      text: text.trim(),
+      text: trimmed,
     };
 
-    const response =
-      aiChatResponses[text.trim()] ??
-      "🐶 요청하신 내용을 확인했어요. 관련 거래를 대시보드에서 검토해 보세요.";
+    const history = messages.map((m) => ({ role: m.role, content: m.text }));
+
+    setMessages((prev) => [...prev, userMsg]);
+    setInput("");
+    setIsLoading(true);
+
+    let responseText = "🐶 요청하신 내용을 확인했어요. 관련 거래를 대시보드에서 검토해 보세요.";
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: trimmed, history }),
+      });
+      const data = (await res.json()) as { message?: string };
+      if (data.message) responseText = data.message;
+    } catch {
+      responseText = "🐶 지금은 답변을 가져오지 못했어요. 잠시 후 다시 시도해 주세요.";
+    } finally {
+      setIsLoading(false);
+    }
 
     const assistantMsg: Message = {
       id: `a-${Date.now()}`,
       role: "assistant",
-      text: response,
+      text: responseText,
     };
 
-    setMessages((prev) => [...prev, userMsg, assistantMsg]);
-    setInput("");
+    setMessages((prev) => [...prev, assistantMsg]);
   };
 
   return (
@@ -92,6 +110,11 @@ export default function FloatingAIChat() {
                   {msg.text}
                 </div>
               ))}
+              {isLoading && (
+                <div className="mr-auto max-w-[88%] rounded-2xl bg-surface px-3.5 py-2.5 text-[13px] leading-relaxed text-ink2">
+                  🐶 생각하는 중...
+                </div>
+              )}
             </div>
 
             <div className="border-t border-hairline px-4 py-3">
@@ -101,7 +124,8 @@ export default function FloatingAIChat() {
                     key={q}
                     type="button"
                     onClick={() => sendMessage(q)}
-                    className="rounded-full bg-surface px-2.5 py-1 text-[11px] text-ink2 transition-colors duration-200 hover:ring-1 hover:ring-hairline hover:text-ink"
+                    disabled={isLoading}
+                    className="rounded-full bg-surface px-2.5 py-1 text-[11px] text-ink2 transition-colors duration-200 hover:ring-1 hover:ring-hairline hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {q}
                   </button>
@@ -118,11 +142,13 @@ export default function FloatingAIChat() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="메시지를 입력하세요"
-                  className="h-10 flex-1 rounded-btn border border-hairline bg-card px-3.5 text-[13px] outline-none transition-colors focus:border-brand focus:shadow-[0_0_0_3px_rgba(10,22,128,0.12)]"
+                  disabled={isLoading}
+                  className="h-10 flex-1 rounded-btn border border-hairline bg-card px-3.5 text-[13px] outline-none transition-colors focus:border-brand focus:shadow-[0_0_0_3px_rgba(10,22,128,0.12)] disabled:opacity-60"
                 />
                 <button
                   type="submit"
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-btn bg-brand text-inverse transition-transform duration-200 hover:scale-[1.03] hover:brightness-110"
+                  disabled={isLoading}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-btn bg-brand text-inverse transition-transform duration-200 hover:scale-[1.03] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
                   aria-label="전송"
                 >
                   <Send size={16} strokeWidth={1.5} />
