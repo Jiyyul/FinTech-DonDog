@@ -37,9 +37,35 @@ const MERCHANT_EXCLUDE_PATTERNS = [
   /^[-=*_\s]+$/,
 ];
 
-function extractMerchant(lines: string[]): string {
+const MERCHANT_LABEL_RE = /상호명?\s*[:：]\s*(.+)/;
+
+/** "상호명:" / "상호:" 라벨 뒤에 오는 값을 우선으로 상호명을 인식한다. */
+function extractMerchantByLabel(lines: string[]): string | null {
+  for (const line of lines) {
+    const match = line.match(MERCHANT_LABEL_RE);
+    const value = match?.[1]?.trim();
+    if (value) return value;
+  }
+  return null;
+}
+
+/**
+ * OCR이 이미지 상단의 로고/장식을 깨진 글자로 잘못 읽는 경우가 많아
+ * ("IZE | | 저" 같은 잡음), 한글이 한 글자만 섞여 있어도 통과하던 기존 필터로는
+ * 이런 잡음 줄을 걸러내지 못했다. 실제 상호명은 보통 한글 단어(2글자 이상 연속)로
+ * 이루어지므로, 파이프 문자가 섞였거나 한글 글자 수가 너무 적은 줄은 잡음으로 보고 건너뛴다.
+ */
+function looksLikeOcrNoise(line: string): boolean {
+  if (line.includes("|")) return true;
+  const hangulCount = (line.match(/[가-힣]/g) ?? []).length;
+  return hangulCount < 2;
+}
+
+/** 상호명 라벨이 없는 영수증을 위한 대체 로직: 맨 위 한글 줄을 상호명으로 추정한다. */
+function extractMerchantFallback(lines: string[]): string {
   for (const line of lines) {
     if (!HANGUL_RE.test(line)) continue;
+    if (looksLikeOcrNoise(line)) continue;
     if (MERCHANT_EXCLUDE_PATTERNS.some((re) => re.test(line))) continue;
     if (/\d{2,4}[-.\/]\d{1,2}[-.\/]\d{1,2}/.test(line)) continue;
     if (/\d{4}년\s*\d{1,2}월/.test(line)) continue;
@@ -48,6 +74,10 @@ function extractMerchant(lines: string[]): string {
     return line;
   }
   return "알 수 없음";
+}
+
+function extractMerchant(lines: string[]): string {
+  return extractMerchantByLabel(lines) ?? extractMerchantFallback(lines);
 }
 
 function extractDate(text: string): string {

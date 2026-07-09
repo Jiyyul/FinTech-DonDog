@@ -84,6 +84,30 @@ export async function createPayment(data: {
   return mapPayment(inserted as PaymentRow);
 }
 
+/**
+ * 거래처/금액/날짜를 직접 수정한다. balance_after는 createPayment와 마찬가지로
+ * 재계산하지 않는다 (mock 데이터 한계로 시계열 재계산은 범위 밖).
+ */
+export async function updatePayment(
+  id: number,
+  patch: { merchant?: string; amount?: number; transactedAt?: string }
+): Promise<PaymentRecord> {
+  const db = getSupabase();
+  const { data: updated, error } = await db
+    .from("payments")
+    .update({
+      ...(patch.merchant !== undefined ? { merchant: patch.merchant } : {}),
+      ...(patch.amount !== undefined ? { amount: patch.amount } : {}),
+      ...(patch.transactedAt !== undefined ? { transacted_at: patch.transactedAt } : {}),
+    })
+    .eq("id", id)
+    .select("id, merchant, amount, balance_after, transacted_at, payment_method")
+    .single();
+
+  if (error) throw new Error(`거래 수정 실패: ${error.message}`);
+  return mapPayment(updated as PaymentRow);
+}
+
 export async function getAllPayments(): Promise<PaymentRecord[]> {
   const db = getSupabase();
   const { data, error } = await db
