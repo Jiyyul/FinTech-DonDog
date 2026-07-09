@@ -2,7 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell } from "lucide-react";
+import {
+  Bell,
+  CalendarPlus,
+  CheckCircle2,
+  Clock,
+  FileText,
+  UserPlus,
+} from "lucide-react";
 import SearchBar from "@/components/common/SearchBar";
 import Avatar from "@/components/common/Avatar";
 import { useSearch } from "@/components/layout/SearchProvider";
@@ -13,16 +20,29 @@ import { getUserInitials } from "@/lib/mock-auth";
 import { getNavItemByPath } from "@/lib/navigation";
 import { formatCurrency } from "@/lib/format";
 import { matchesSearch } from "@/lib/search-utils";
+import type { ActivityIcon, ActivityItem } from "@/lib/dashboard-types";
+
+const activityIconMap: Record<ActivityIcon, React.ElementType> = {
+  check: CheckCircle2,
+  calendar: CalendarPlus,
+  clock: Clock,
+  user: UserPlus,
+  file: FileText,
+};
 
 export default function Header() {
   const pathname = usePathname();
   const router = useRouter();
-  const { allTransactions } = useDashboardData();
+  const { allTransactions, activityFeed } = useDashboardData();
   const { query, setQuery, requestSelectTransaction } = useSearch();
   const { currentOrganization } = useMockUser();
   const { session } = useMockSession();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  const notificationRef = useRef<HTMLDivElement>(null);
+
+  const notifications = activityFeed.slice(0, 3);
 
   const currentNav = getNavItemByPath(pathname);
   const pageTitle = currentNav?.label ?? "Dashboard";
@@ -39,6 +59,9 @@ export default function Header() {
     const handlePointerDown = (event: MouseEvent) => {
       if (!searchRef.current?.contains(event.target as Node)) {
         setDropdownOpen(false);
+      }
+      if (!notificationRef.current?.contains(event.target as Node)) {
+        setNotificationOpen(false);
       }
     };
 
@@ -113,14 +136,39 @@ export default function Header() {
           )}
         </div>
 
-        <button
-          type="button"
-          className="ui-icon-btn relative border border-hairline bg-card shadow-card"
-          aria-label="알림"
-        >
-          <Bell size={20} className="text-ink2" strokeWidth={1.5} />
-          <span className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-danger ring-2 ring-card" />
-        </button>
+        <div ref={notificationRef} className="relative shrink-0">
+          <button
+            type="button"
+            onClick={() => setNotificationOpen((open) => !open)}
+            className="ui-icon-btn relative border border-hairline bg-card shadow-card"
+            aria-label="알림"
+            aria-expanded={notificationOpen}
+          >
+            <Bell size={20} className="text-ink2" strokeWidth={1.5} />
+            {notifications.length > 0 && (
+              <span className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-danger ring-2 ring-card" />
+            )}
+          </button>
+
+          {notificationOpen && (
+            <div className="absolute right-0 top-[calc(100%+0.5rem)] z-40 w-[min(280px,calc(100vw-2rem))] overflow-hidden rounded-modal border border-hairline bg-card shadow-card-hover">
+              <div className="border-b border-hairline px-3.5 py-2.5">
+                <p className="text-[12px] font-semibold text-ink">최근 활동</p>
+              </div>
+              {notifications.length > 0 ? (
+                <ul className="divide-y divide-hairline">
+                  {notifications.map((item) => (
+                    <NotificationItem key={item.id} item={item} />
+                  ))}
+                </ul>
+              ) : (
+                <p className="px-3.5 py-4 text-center text-[12px] text-muted">
+                  아직 활동 내역이 없습니다.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
 
         <button
           type="button"
@@ -131,5 +179,25 @@ export default function Header() {
         </button>
       </div>
     </header>
+  );
+}
+
+function NotificationItem({ item }: { item: ActivityItem }) {
+  const Icon = item.icon ? activityIconMap[item.icon] : CheckCircle2;
+
+  return (
+    <li className="flex gap-2.5 px-3.5 py-2.5">
+      <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-surface ring-1 ring-hairline">
+        {item.hasDogIcon ? (
+          <span className="text-[9px] leading-none">🐶</span>
+        ) : (
+          <Icon size={10} className="text-ink2" strokeWidth={1.5} />
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[10px] font-medium text-muted">{item.time}</p>
+        <p className="mt-0.5 line-clamp-2 text-[12px] leading-snug text-ink2">{item.message}</p>
+      </div>
+    </li>
   );
 }

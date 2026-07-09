@@ -1,9 +1,25 @@
 "use client";
 
-import { createContext, useContext } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { prependActivity } from "@/lib/activity-feed";
+import type { ActivityIcon, ActivityItem } from "@/lib/dashboard-types";
 import type { DashboardData } from "@/lib/get-dashboard-data";
 
-const DashboardDataContext = createContext<DashboardData | null>(null);
+type DashboardDataContextValue = DashboardData & {
+  logActivity: (
+    message: string,
+    options?: { hasDogIcon?: boolean; icon?: ActivityIcon }
+  ) => void;
+};
+
+const DashboardDataContext = createContext<DashboardDataContextValue | null>(null);
 
 export function DashboardDataProvider({
   data,
@@ -12,8 +28,30 @@ export function DashboardDataProvider({
   data: DashboardData;
   children: React.ReactNode;
 }) {
+  const [activityFeed, setActivityFeed] = useState(data.activityFeed);
+
+  useEffect(() => {
+    setActivityFeed(data.activityFeed);
+  }, [data.activityFeed]);
+
+  const logActivity = useCallback(
+    (message: string, options?: { hasDogIcon?: boolean; icon?: ActivityIcon }) => {
+      setActivityFeed((prev) => prependActivity(prev, message, options));
+    },
+    []
+  );
+
+  const value = useMemo(
+    () => ({
+      ...data,
+      activityFeed,
+      logActivity,
+    }),
+    [data, activityFeed, logActivity]
+  );
+
   return (
-    <DashboardDataContext.Provider value={data}>{children}</DashboardDataContext.Provider>
+    <DashboardDataContext.Provider value={value}>{children}</DashboardDataContext.Provider>
   );
 }
 

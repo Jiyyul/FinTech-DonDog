@@ -26,10 +26,8 @@ import { useSearch } from "@/components/layout/SearchProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useDashboardData } from "@/components/providers/DashboardDataProvider";
 import { useMockUser } from "@/components/providers/MockUserProvider";
-import { prependActivity } from "@/lib/activity-feed";
 import { matchesSearch } from "@/lib/search-utils";
 import type {
-  ActivityItem,
   AuditAnomaly,
   BudgetCategory,
   CalendarEvent,
@@ -43,7 +41,8 @@ export default function Dashboard() {
     anomalyQueue,
     calendarEvents: initialCalendarEvents,
     recentTransactions: transactions,
-    activityFeed: initialActivityFeed,
+    activityFeed,
+    logActivity,
   } = useDashboardData();
   const { currentOrganization } = useMockUser();
   const { query, selectTransactionId, clearSelectTransaction } = useSearch();
@@ -51,14 +50,6 @@ export default function Dashboard() {
   const [anomalies, setAnomalies] = useState(anomalyQueue);
   const [deferredAnomalies, setDeferredAnomalies] = useState<AuditAnomaly[]>([]);
   const [calendarEvents, setCalendarEvents] = useState(initialCalendarEvents);
-  const [activities, setActivities] = useState<ActivityItem[]>(initialActivityFeed);
-
-  const logActivity = (
-    message: string,
-    options?: { hasDogIcon?: boolean; icon?: ActivityItem["icon"] }
-  ) => {
-    setActivities((prev) => prependActivity(prev, message, options));
-  };
 
   const [anomalyModalOpen, setAnomalyModalOpen] = useState(false);
   const [selectedAnomaly, setSelectedAnomaly] = useState<AuditAnomaly | null>(null);
@@ -306,7 +297,7 @@ export default function Dashboard() {
           />
         </div>
         <div className="dash-grid-cell min-w-0">
-          <ActivityFeedCard activities={activities} className="h-full min-h-0" />
+          <ActivityFeedCard activities={activityFeed} className="h-full min-h-0" />
         </div>
       </section>
 
