@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useRouter } from "next/navigation";
 
 export type AuthTab = "login" | "signup";
 
@@ -24,14 +25,17 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [tab, setTab] = useState<AuthTab>("login");
   const [toast, setToast] = useState<string | null>(null);
 
-  const openAuth = useCallback((nextTab: AuthTab = "login") => {
-    setTab(nextTab);
-    setIsOpen(true);
-  }, []);
+  const openAuth = useCallback(
+    (nextTab: AuthTab = "login") => {
+      router.push(nextTab === "signup" ? "/signup" : "/login");
+    },
+    [router]
+  );
 
   const closeAuth = useCallback(() => {
     setIsOpen(false);
