@@ -10,7 +10,6 @@ import {
 } from "@/lib/actions/anomaly-actions";
 import { updateTransactionCategoryAction } from "@/lib/actions/classification-actions";
 import { deleteScheduleAction, saveScheduleAction } from "@/lib/actions/schedule-actions";
-import { addManualTransactionAction } from "@/lib/actions/transaction-actions";
 import HeroBudgetCard from "@/components/dashboard/HeroBudgetCard";
 import AuditCard from "@/components/dashboard/AuditCard";
 import CalendarCard from "@/components/dashboard/CalendarCard";
@@ -24,7 +23,6 @@ import ExceptionModal from "@/components/dashboard/ExceptionModal";
 import ScheduleFormModal from "@/components/dashboard/ScheduleFormModal";
 import FloatingAIChat from "@/components/ai/FloatingAIChat";
 import EmptyDashboard from "@/components/dashboard/EmptyDashboard";
-import type { ManualTransactionInput } from "@/lib/transaction-utils";
 import { useSearch } from "@/components/layout/SearchProvider";
 import { useDashboardData } from "@/components/providers/DashboardDataProvider";
 import { useMockUser } from "@/components/providers/MockUserProvider";
@@ -38,20 +36,12 @@ import type {
   DashboardTransaction,
 } from "@/lib/dashboard-types";
 
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-}
-
 export default function Dashboard() {
   const router = useRouter();
   const {
     anomalyQueue,
     calendarEvents: initialCalendarEvents,
+    recentTransactions,
     allTransactions,
     activityFeed: initialActivityFeed,
   } = useDashboardData();
@@ -97,15 +87,18 @@ export default function Dashboard() {
     setTxDrawerOpen(true);
   };
 
-  const filteredTransactions = useMemo(() => {
-    if (!query.trim()) return allTransactions;
-    return allTransactions.filter((tx) => matchesSearch(tx, query));
+  const filteredRecent = useMemo(() => {
+    if (!query.trim()) return recentTransactions;
+    return allTransactions.filter((tx) => matchesSearch(tx, query)).slice(0, 4);
+  }, [recentTransactions, allTransactions, query]);
+
+  const filteredAll = useMemo(() => {
+    const newestFirst = [...allTransactions].reverse();
+    if (!query.trim()) return newestFirst;
+    return newestFirst.filter((tx) => matchesSearch(tx, query));
   }, [allTransactions, query]);
 
-  const displayedTransactions = useMemo(
-    () => filteredTransactions.slice(0, 4),
-    [filteredTransactions]
-  );
+  const displayedTransactions = filteredRecent;
 
   useEffect(() => {
     if (!selectTransactionId) return;
@@ -257,27 +250,6 @@ export default function Dashboard() {
     router.refresh();
   };
 
-  const handleAddTransaction = async (input: ManualTransactionInput) => {
-    const imageDataUrl = input.receiptFile.type.startsWith("image/")
-      ? await fileToDataUrl(input.receiptFile).catch(() => null)
-      : null;
-
-    await addManualTransactionAction({
-      merchant: input.merchant,
-      amount: input.amount,
-      date: input.date,
-      category: input.category,
-      paymentMethod: input.paymentMethod,
-      fileName: input.receiptFile.name,
-      fileType: input.receiptFile.type,
-      fileSize: input.receiptFile.size,
-      imageDataUrl,
-    });
-
-    logActivity(`${input.merchant} 거래내역을 수동 등록했습니다.`, { hasDogIcon: true });
-    router.refresh();
-  };
-
   if (isEmptyDashboard) {
     return <EmptyDashboard onCreateClub={openAddGroupModal} />;
   }
@@ -329,11 +301,10 @@ export default function Dashboard() {
         <div className="dash-grid-cell min-w-0">
           <RecentTransactions
             transactions={displayedTransactions}
-            allTransactions={filteredTransactions}
+            allTransactions={filteredAll}
             onSelect={handleSelectTransaction}
             onAddReceipt={(tx) => router.push(`/receipts?transactionId=${tx.id}`)}
             onViewReceipt={() => router.push("/receipts")}
-            onAddTransaction={handleAddTransaction}
           />
         </div>
         <div className="dash-grid-cell min-w-0">
@@ -366,6 +337,9 @@ export default function Dashboard() {
         onClose={() => {
           setTxDrawerOpen(false);
           setSelectedTx(null);
+        }}
+        onCategoryChange={(category) => {
+          setSelectedTx((prev) => (prev ? { ...prev, category } : null));
         }}
       />
 

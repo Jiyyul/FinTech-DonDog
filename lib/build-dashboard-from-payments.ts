@@ -16,15 +16,19 @@ import type {
 } from "@/lib/dashboard-types";
 import type { PaymentRecord } from "@/lib/payment-types";
 
-const AMOUNT_THRESHOLD = 300_000;
+const DEFAULT_AMOUNT_THRESHOLD = 300_000;
 
 function formatDateLabel(date: string) {
   const [, month, day] = date.split("-");
   return `${Number(month)}월 ${Number(day)}일`;
 }
 
-function inferStatus(amount: number, confidence: number): TransactionStatus {
-  if (amount >= AMOUNT_THRESHOLD) return "review";
+function inferStatus(
+  amount: number,
+  confidence: number,
+  amountThreshold: number
+): TransactionStatus {
+  if (amount >= amountThreshold) return "review";
   if (confidence < 80) return "review";
   return "completed";
 }
@@ -32,7 +36,8 @@ function inferStatus(amount: number, confidence: number): TransactionStatus {
 function paymentToTransaction(
   record: PaymentRecord,
   classificationMap: Map<number, StoredClassification>,
-  linkedPaymentIds: Set<number>
+  linkedPaymentIds: Set<number>,
+  amountThreshold: number
 ): DashboardTransaction {
   const date = record.transactedAt;
   const { category, confidence } = classifyPayment(
@@ -40,7 +45,7 @@ function paymentToTransaction(
     record.merchant,
     classificationMap
   );
-  const status = inferStatus(record.amount, confidence);
+  const status = inferStatus(record.amount, confidence, amountThreshold);
 
   return {
     id: paymentIdToTransactionId(record.id),
@@ -61,17 +66,21 @@ function paymentToTransaction(
 export function buildTransactionsFromPayments(
   payments: PaymentRecord[],
   classificationMap: Map<number, StoredClassification>,
-  linkedPaymentIds: Set<number>
+  linkedPaymentIds: Set<number>,
+  amountThreshold: number = DEFAULT_AMOUNT_THRESHOLD
 ): DashboardTransaction[] {
-  return payments.map((record) => paymentToTransaction(record, classificationMap, linkedPaymentIds));
+  return payments.map((record) =>
+    paymentToTransaction(record, classificationMap, linkedPaymentIds, amountThreshold)
+  );
 }
 
 export function buildAllTransactions(
   payments: PaymentRecord[],
   classificationMap: Map<number, StoredClassification>,
-  linkedPaymentIds: Set<number>
+  linkedPaymentIds: Set<number>,
+  amountThreshold: number = DEFAULT_AMOUNT_THRESHOLD
 ): DashboardTransaction[] {
-  return [...buildTransactionsFromPayments(payments, classificationMap, linkedPaymentIds)].reverse();
+  return [...buildTransactionsFromPayments(payments, classificationMap, linkedPaymentIds, amountThreshold)].reverse();
 }
 
 function sumByCategory(transactions: DashboardTransaction[]) {
@@ -109,14 +118,15 @@ export function buildAnomalyQueue(
   transactions: DashboardTransaction[],
   budgetTotal: number,
   calendarEvents: CalendarEvent[],
-  reviewStatusMap: Map<number, ReviewStatus>
+  reviewStatusMap: Map<number, ReviewStatus>,
+  amountThreshold: number = DEFAULT_AMOUNT_THRESHOLD
 ): AuditAnomaly[] {
   // back_receipt의 규칙기반 감지 엔진(예산초과·중복결제·일정불일치·영수증누락)을
   // 실제 결제내역에 적용한다 (lib/anomalies/from-payments.ts 어댑터 참고).
   const ruleResults = detectPaymentAnomalies(
     transactions,
     budgetTotal,
-    AMOUNT_THRESHOLD,
+    amountThreshold,
     calendarEvents
   );
   const anomalies = toAuditAnomalyQueue(ruleResults, transactions);
@@ -312,7 +322,7 @@ export function buildBudgetStats(
   };
 }
 
-export const AMOUNT_THRESHOLD_EXPORT = AMOUNT_THRESHOLD;
+export const AMOUNT_THRESHOLD_EXPORT = DEFAULT_AMOUNT_THRESHOLD;
 
 export const CALENDAR_EVENTS: CalendarEvent[] = [
   {

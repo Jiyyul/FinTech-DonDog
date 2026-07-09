@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { setBudgetTotal, setCategoryBudget } from "@/lib/budget-repository";
+import { setBudgetTotal, setCategoryBudget, setAnomalyThreshold } from "@/lib/budget-repository";
 import type { BudgetCategory } from "@/lib/dashboard-types";
 
 export async function updateTotalBudgetAction(nextAmount: number): Promise<void> {
@@ -11,6 +11,16 @@ export async function updateTotalBudgetAction(nextAmount: number): Promise<void>
   await setBudgetTotal(nextAmount);
   revalidatePath("/");
   revalidatePath("/budget");
+}
+
+export async function updateAnomalyThresholdAction(nextAmount: number): Promise<void> {
+  if (!Number.isFinite(nextAmount) || nextAmount <= 0) {
+    throw new Error("이상감지 기준 금액은 0보다 큰 숫자여야 합니다.");
+  }
+  await setAnomalyThreshold(nextAmount);
+  revalidatePath("/");
+  revalidatePath("/budget");
+  revalidatePath("/anomalies");
 }
 
 export async function updateCategoryBudgetAction(

@@ -53,7 +53,7 @@ async function main() {
     console.log(`현재 결제 건수: ${await getPaymentCount()}`);
   }
 
-  await seedBudgetDefaults(DEFAULT_TOTAL_BUDGET, DEFAULT_CATEGORY_BUDGETS);
+  await seedBudgetDefaults(DEFAULT_TOTAL_BUDGET, DEFAULT_CATEGORY_BUDGETS, 300_000);
   await seedSchedulesIfEmpty(CALENDAR_EVENTS);
 
   console.log("");

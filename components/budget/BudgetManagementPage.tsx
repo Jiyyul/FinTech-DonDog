@@ -6,9 +6,8 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import Card from "@/components/common/Card";
 import Button from "@/components/common/Button";
-import type { BudgetCategory } from "@/lib/dashboard-types";
 import { formatCurrency } from "@/lib/format";
-import { updateCategoryBudgetAction, updateTotalBudgetAction } from "@/lib/actions/budget-actions";
+import { updateTotalBudgetAction, updateAnomalyThresholdAction } from "@/lib/actions/budget-actions";
 import type { BudgetPageData } from "@/lib/get-budget-data";
 
 const inputClass =
@@ -16,14 +15,12 @@ const inputClass =
 
 export default function BudgetManagementPage({ data }: { data: BudgetPageData }) {
   const router = useRouter();
-  const { totalBudget, totalUsed, categories, history } = data;
+  const { totalBudget, totalUsed, anomalyThreshold, history } = data;
 
   const [totalBudgetInput, setTotalBudgetInput] = useState(String(totalBudget));
+  const [anomalyThresholdInput, setAnomalyThresholdInput] = useState(String(anomalyThreshold));
   const [saving, setSaving] = useState(false);
-  const [categoryInputs, setCategoryInputs] = useState<Record<string, string>>(() =>
-    Object.fromEntries(categories.map((c) => [c.category, String(c.budget)]))
-  );
-  const [savingCategory, setSavingCategory] = useState<BudgetCategory | null>(null);
+  const [savingThreshold, setSavingThreshold] = useState(false);
 
   const handleTotalBudgetSave = async () => {
     const next = Number(totalBudgetInput);
@@ -37,16 +34,15 @@ export default function BudgetManagementPage({ data }: { data: BudgetPageData })
     }
   };
 
-  const handleCategoryBudgetSave = async (category: BudgetCategory) => {
-    const next = Number(categoryInputs[category]);
-    const current = categories.find((c) => c.category === category)?.budget ?? 0;
-    if (!Number.isFinite(next) || next < 0 || next === current) return;
-    setSavingCategory(category);
+  const handleAnomalyThresholdSave = async () => {
+    const next = Number(anomalyThresholdInput);
+    if (!Number.isFinite(next) || next <= 0 || next === anomalyThreshold) return;
+    setSavingThreshold(true);
     try {
-      await updateCategoryBudgetAction(category, next);
+      await updateAnomalyThresholdAction(next);
       router.refresh();
     } finally {
-      setSavingCategory(null);
+      setSavingThreshold(false);
     }
   };
 
@@ -87,41 +83,32 @@ export default function BudgetManagementPage({ data }: { data: BudgetPageData })
         </p>
       </Card>
 
-      <div className="space-y-4">
-        {categories.map((item) => (
-          <Card key={item.category}>
-            <h2 className="text-[16px] font-semibold text-navy">{item.category}</h2>
-            <dl className="mt-4 grid grid-cols-3 gap-3">
-              <BudgetStat label="예산" value={formatCurrency(item.budget)} />
-              <BudgetStat label="사용" value={formatCurrency(item.used)} />
-              <BudgetStat
-                label="남음"
-                value={formatCurrency(item.budget - item.used)}
-                highlight
-              />
-            </dl>
-            <div className="mt-3 flex items-end gap-2">
-              <input
-                type="number"
-                value={categoryInputs[item.category] ?? String(item.budget)}
-                onChange={(e) =>
-                  setCategoryInputs((prev) => ({ ...prev, [item.category]: e.target.value }))
-                }
-                className={`flex-1 ${inputClass}`}
-                min={0}
-              />
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => handleCategoryBudgetSave(item.category)}
-                disabled={savingCategory === item.category}
-              >
-                {savingCategory === item.category ? "저장 중..." : "예산 저장"}
-              </Button>
-            </div>
-          </Card>
-        ))}
-      </div>
+      <Card className="mb-8">
+        <p className="mb-3 text-[13px] text-muted">이상감지 기준 금액</p>
+        <div className="flex flex-wrap items-end gap-3">
+          <input
+            type="number"
+            value={anomalyThresholdInput}
+            onChange={(e) => setAnomalyThresholdInput(e.target.value)}
+            className={`min-w-[12rem] flex-1 ${inputClass}`}
+            min={1}
+          />
+          <Button
+            type="button"
+            variant="primary"
+            onClick={handleAnomalyThresholdSave}
+            disabled={savingThreshold}
+          >
+            {savingThreshold ? "저장 중..." : "저장"}
+          </Button>
+        </div>
+        <p className="mt-3 text-[clamp(1.5rem,2.5vw,2rem)] font-bold tabular-nums text-navy">
+          {formatCurrency(anomalyThreshold)}
+        </p>
+        <p className="mt-1 text-[13px] text-muted">
+          이 금액 이상 결제 시 AI 이상감지 및 공동 승인 검토 대상으로 분류됩니다.
+        </p>
+      </Card>
 
       <div className="my-8 border-t border-hairline" />
 
@@ -158,29 +145,6 @@ export default function BudgetManagementPage({ data }: { data: BudgetPageData })
           </ul>
         )}
       </Card>
-    </div>
-  );
-}
-
-function BudgetStat({
-  label,
-  value,
-  highlight = false,
-}: {
-  label: string;
-  value: string;
-  highlight?: boolean;
-}) {
-  return (
-    <div className="rounded-xl bg-appbg p-3 ring-1 ring-hairline">
-      <dt className="text-[11px] text-muted">{label}</dt>
-      <dd
-        className={`mt-1 text-[14px] font-semibold tabular-nums ${
-          highlight ? "text-navy" : "text-ink"
-        }`}
-      >
-        {value}
-      </dd>
     </div>
   );
 }

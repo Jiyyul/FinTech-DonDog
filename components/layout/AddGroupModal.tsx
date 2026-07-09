@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { X, Plus, Trash2, Upload } from "lucide-react";
+import { useEffect, useState } from "react";
+import { X, Plus, Trash2 } from "lucide-react";
 import Button from "@/components/common/Button";
 import type { Organization } from "@/lib/mock-data";
 
@@ -21,7 +21,6 @@ export type NewGroupFormData = {
   totalBudget: string;
   anomalyThreshold: string;
   schedules: GroupScheduleDraft[];
-  rulesFileName?: string;
 };
 
 type AddGroupModalProps = {
@@ -49,8 +48,6 @@ export default function AddGroupModal({ open, onClose, onSave }: AddGroupModalPr
   const [totalBudget, setTotalBudget] = useState("");
   const [anomalyThreshold, setAnomalyThreshold] = useState("300000");
   const [schedules, setSchedules] = useState<GroupScheduleDraft[]>([]);
-  const [rulesFileName, setRulesFileName] = useState<string | undefined>();
-  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open) {
@@ -73,7 +70,6 @@ export default function AddGroupModal({ open, onClose, onSave }: AddGroupModalPr
     setTotalBudget("");
     setAnomalyThreshold("300000");
     setSchedules([]);
-    setRulesFileName(undefined);
   }, [open]);
 
   if (!open) return null;
@@ -90,7 +86,6 @@ export default function AddGroupModal({ open, onClose, onSave }: AddGroupModalPr
       totalBudget,
       anomalyThreshold,
       schedules: schedules.filter((s) => s.name.trim()),
-      rulesFileName,
     });
     onClose();
   };
@@ -291,30 +286,6 @@ export default function AddGroupModal({ open, onClose, onSave }: AddGroupModalPr
                   ))}
                 </ul>
               )}
-            </div>
-
-            <div>
-              <span className="mb-1.5 block text-[13px] text-muted">회칙 업로드</span>
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".pdf,.doc,.docx,.hwp"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  setRulesFileName(file?.name);
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-hairline bg-surface py-8 transition-colors hover:border-brand/30 hover:bg-brand-subtle/20"
-              >
-                <Upload size={20} className="text-muted" strokeWidth={1.5} />
-                <span className="text-[13px] text-ink2">
-                  {rulesFileName ?? "PDF, DOC, HWP 파일 선택"}
-                </span>
-              </button>
             </div>
           </div>
 

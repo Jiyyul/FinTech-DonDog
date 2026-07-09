@@ -10,7 +10,6 @@ import {
   buildMonthlyBudgetTrend,
   buildTransactionsFromPayments,
   AI_CHAT_SUGGESTIONS,
-  AMOUNT_THRESHOLD_EXPORT,
 } from "@/lib/build-dashboard-from-payments";
 import { buildClassificationMap } from "@/lib/classify-payments";
 import type {
@@ -27,7 +26,7 @@ import {
   getAllPayments,
   getClassifications,
 } from "@/lib/payment-repository";
-import { getBudgetCategories, getBudgetTotal } from "@/lib/budget-repository";
+import { getBudgetCategories, getBudgetTotal, getAnomalyThreshold } from "@/lib/budget-repository";
 import { getReviewStatusMap } from "@/lib/review-repository";
 import { getLinkedPaymentIds } from "@/lib/receipt-repository";
 import { getSchedules } from "@/lib/schedule-repository";
@@ -54,12 +53,24 @@ export type DashboardData = {
   currentAccountBalance: number;
 };
 
+export async function findDashboardTransaction(
+  transactionId: string
+): Promise<DashboardTransaction | null> {
+  const data = await getDashboardData();
+  return (
+    data.allTransactions.find((tx) => tx.id === transactionId) ??
+    data.recentTransactions.find((tx) => tx.id === transactionId) ??
+    null
+  );
+}
+
 export async function getDashboardData(): Promise<DashboardData> {
   const [
     payments,
     classifications,
     budgetTotal,
     categoryBudgets,
+    anomalyThreshold,
     reviewStatusMap,
     linkedPaymentIds,
     balances,
@@ -69,6 +80,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     getClassifications(),
     getBudgetTotal(),
     getBudgetCategories(),
+    getAnomalyThreshold(),
     getReviewStatusMap(),
     getLinkedPaymentIds(),
     getAccountBalances(),
@@ -78,9 +90,25 @@ export async function getDashboardData(): Promise<DashboardData> {
   const classificationMap = buildClassificationMap(classifications);
   const { initial, current } = balances;
 
-  const transactions = buildTransactionsFromPayments(payments, classificationMap, linkedPaymentIds);
-  const allTx = buildAllTransactions(payments, classificationMap, linkedPaymentIds);
-  const anomalies = buildAnomalyQueue(transactions, budgetTotal, calendarEvents, reviewStatusMap);
+  const transactions = buildTransactionsFromPayments(
+    payments,
+    classificationMap,
+    linkedPaymentIds,
+    anomalyThreshold
+  );
+  const allTx = buildAllTransactions(
+    payments,
+    classificationMap,
+    linkedPaymentIds,
+    anomalyThreshold
+  );
+  const anomalies = buildAnomalyQueue(
+    transactions,
+    budgetTotal,
+    calendarEvents,
+    reviewStatusMap,
+    anomalyThreshold
+  );
   const pendingIds = new Set(anomalies.map((a) => a.transaction.id));
   const budgetStats = buildBudgetStats(transactions, budgetTotal, pendingIds);
   // 사용률/사용금액/잔액과 동일하게, 검토 대기(승인 전) 거래는 도넛 차트에서도 제외한다.
@@ -100,7 +128,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     budgetRemaining: budgetStats.remaining,
     budgetUsagePercent: budgetStats.usagePercent,
     budgetUsageSpeedPercent: budgetStats.usageSpeedPercent,
-    amountThreshold: AMOUNT_THRESHOLD_EXPORT,
+    amountThreshold: anomalyThreshold,
     doughnutCenterPercent: budgetStats.doughnutCenterPercent,
     budgetSlices: slices,
     pendingAuditTransaction,

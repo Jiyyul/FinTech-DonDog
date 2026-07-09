@@ -1,6 +1,7 @@
 import { getSupabase } from "@/lib/supabase";
 import { paymentIdToTransactionId, transactionIdToPaymentId } from "@/lib/payment-types";
-import { createPayment } from "@/lib/payment-repository";
+import { createPayment, saveClassifications } from "@/lib/payment-repository";
+import { normalizeReceiptCategory } from "@/lib/receipt-category";
 import type { ParsedReceipt, Receipt, ReceiptItem } from "@/lib/receipts/receipt-types";
 
 const GROUP_ID = "group_001";
@@ -87,7 +88,8 @@ export async function saveReceipt(
     : null;
 
   // 연결할 기존 거래가 없으면 OCR로 읽은 값으로 새 거래(payment) 행을 만들어 연결한다.
-  if (linkedPaymentId == null) {
+  const createdNewPayment = linkedPaymentId == null;
+  if (createdNewPayment) {
     const payment = await createPayment({
       merchant: data.merchant,
       amount: data.totalAmount,
@@ -95,6 +97,14 @@ export async function saveReceipt(
       paymentMethod: data.paymentMethod ?? undefined,
     });
     linkedPaymentId = payment.id;
+    await saveClassifications([
+      {
+        paymentId: payment.id,
+        category: normalizeReceiptCategory(data.category),
+        confidence: data.confidence ?? 90,
+        source: "receipt",
+      },
+    ]);
   }
 
   const id = `receipt_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;

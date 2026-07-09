@@ -1,6 +1,8 @@
 import { getSupabase } from "@/lib/supabase";
 import type { BudgetCategory } from "@/lib/dashboard-types";
 
+import { DEFAULT_ANOMALY_THRESHOLD } from "@/lib/budget-constants";
+
 export type BudgetHistoryItem = {
   id: string;
   date: string;
@@ -11,6 +13,42 @@ export type BudgetHistoryItem = {
   type: "budget_change" | "ai_review";
   label?: string;
 };
+
+export async function getAnomalyThreshold(): Promise<number> {
+  const db = getSupabase();
+  const { data, error } = await db
+    .from("budget_total")
+    .select("anomaly_threshold_amount")
+    .eq("id", 1)
+    .maybeSingle();
+  if (error) throw new Error(`이상감지 기준 금액 조회 실패: ${error.message}`);
+  return data?.anomaly_threshold_amount ?? DEFAULT_ANOMALY_THRESHOLD;
+}
+
+export async function setAnomalyThreshold(nextAmount: number, actor?: string): Promise<void> {
+  const db = getSupabase();
+  const current = await getAnomalyThreshold();
+  const totalBudget = await getBudgetTotal();
+
+  const { error: upsertError } = await db.from("budget_total").upsert(
+    {
+      id: 1,
+      amount: totalBudget > 0 ? totalBudget : 8_000_000,
+      anomaly_threshold_amount: nextAmount,
+    },
+    { onConflict: "id" }
+  );
+  if (upsertError) throw new Error(`이상감지 기준 금액 저장 실패: ${upsertError.message}`);
+
+  const { error: historyError } = await db.from("budget_history").insert({
+    category: "이상감지 기준 금액",
+    from_amount: current,
+    to_amount: nextAmount,
+    actor,
+    type: "budget_change",
+  });
+  if (historyError) throw new Error(`예산 변경 이력 저장 실패: ${historyError.message}`);
+}
 
 export async function getBudgetTotal(): Promise<number> {
   const db = getSupabase();
@@ -106,14 +144,30 @@ export async function setCategoryBudget(
 /** 시드 스크립트 전용: 이력 기록 없이 초기 예산 값만 채운다. 이미 값이 있으면 건드리지 않는다. */
 export async function seedBudgetDefaults(
   totalBudget: number,
-  categoryBudgets: Record<string, number>
+  categoryBudgets: Record<string, number>,
+  anomalyThreshold: number = DEFAULT_ANOMALY_THRESHOLD
 ): Promise<void> {
   const db = getSupabase();
 
-  const existingTotal = await getBudgetTotal();
-  if (existingTotal === 0) {
-    const { error } = await db.from("budget_total").upsert({ id: 1, amount: totalBudget });
+  const { data: existingRow } = await db
+    .from("budget_total")
+    .select("amount, anomaly_threshold_amount")
+    .eq("id", 1)
+    .maybeSingle();
+
+  if (!existingRow || existingRow.amount === 0) {
+    const { error } = await db.from("budget_total").upsert({
+      id: 1,
+      amount: totalBudget,
+      anomaly_threshold_amount: anomalyThreshold,
+    });
     if (error) throw new Error(`총 예산 시드 실패: ${error.message}`);
+  } else if (existingRow.anomaly_threshold_amount == null) {
+    const { error } = await db
+      .from("budget_total")
+      .update({ anomaly_threshold_amount: anomalyThreshold })
+      .eq("id", 1);
+    if (error) throw new Error(`이상감지 기준 금액 시드 실패: ${error.message}`);
   }
 
   const existingCategories = await getBudgetCategories();

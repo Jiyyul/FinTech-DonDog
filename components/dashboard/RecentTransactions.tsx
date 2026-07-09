@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Paperclip, Plus, X } from "lucide-react";
 import Card from "@/components/common/Card";
 import StatusBadge from "@/components/common/StatusBadge";
-import AddTransactionModal from "@/components/dashboard/AddTransactionModal";
+import ReceiptUploadModal from "@/components/receipts/ReceiptUploadModal";
+import { toRuleEngineTransactions } from "@/lib/anomalies/from-payments";
 import { formatCurrency } from "@/lib/format";
 import type { DashboardTransaction } from "@/lib/dashboard-types";
-import type { ManualTransactionInput } from "@/lib/transaction-utils";
 
 type RecentTransactionsProps = {
   transactions: DashboardTransaction[];
@@ -15,7 +15,6 @@ type RecentTransactionsProps = {
   onSelect: (transaction: DashboardTransaction) => void;
   onAddReceipt: (transaction: DashboardTransaction) => void;
   onViewReceipt: (transaction: DashboardTransaction) => void;
-  onAddTransaction: (input: ManualTransactionInput) => void | Promise<void>;
   className?: string;
 };
 
@@ -105,14 +104,18 @@ export default function RecentTransactions({
   onSelect,
   onAddReceipt,
   onViewReceipt,
-  onAddTransaction,
   className = "",
 }: RecentTransactionsProps) {
   const [viewAllOpen, setViewAllOpen] = useState(false);
-  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [receiptModalOpen, setReceiptModalOpen] = useState(false);
+
+  const matchTransactions = useMemo(
+    () => toRuleEngineTransactions(allTransactions),
+    [allTransactions]
+  );
 
   useEffect(() => {
-    if (viewAllOpen || addModalOpen) {
+    if (viewAllOpen || receiptModalOpen) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
@@ -120,7 +123,7 @@ export default function RecentTransactions({
     return () => {
       document.body.style.overflow = "";
     };
-  }, [viewAllOpen, addModalOpen]);
+  }, [viewAllOpen, receiptModalOpen]);
 
   return (
     <>
@@ -151,14 +154,15 @@ export default function RecentTransactions({
         </div>
 
         <div className="mt-5 flex shrink-0 justify-end border-t border-hairline pt-4">
-          <AddTransactionButton onClick={() => setAddModalOpen(true)} />
+          <AddTransactionButton onClick={() => setReceiptModalOpen(true)} />
         </div>
       </Card>
 
-      <AddTransactionModal
-        open={addModalOpen}
-        onClose={() => setAddModalOpen(false)}
-        onSubmit={onAddTransaction}
+      <ReceiptUploadModal
+        open={receiptModalOpen}
+        onClose={() => setReceiptModalOpen(false)}
+        transactions={matchTransactions}
+        title="거래내역 추가"
       />
 
       {viewAllOpen && (
@@ -211,7 +215,7 @@ export default function RecentTransactions({
               <AddTransactionButton
                 onClick={() => {
                   setViewAllOpen(false);
-                  setAddModalOpen(true);
+                  setReceiptModalOpen(true);
                 }}
               />
             </div>

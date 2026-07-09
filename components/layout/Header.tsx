@@ -2,14 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell } from "lucide-react";
 import SearchBar from "@/components/common/SearchBar";
-import Avatar from "@/components/common/Avatar";
 import { useSearch } from "@/components/layout/SearchProvider";
 import { useDashboardData } from "@/components/providers/DashboardDataProvider";
 import { useMockUser } from "@/components/providers/MockUserProvider";
-import { useMockSession } from "@/components/auth/useMockSession";
-import { getUserInitials } from "@/lib/mock-auth";
 import { getNavItemByPath } from "@/lib/navigation";
 import { formatCurrency } from "@/lib/format";
 import { matchesSearch } from "@/lib/search-utils";
@@ -20,7 +16,6 @@ export default function Header() {
   const { allTransactions } = useDashboardData();
   const { query, setQuery, requestSelectTransaction } = useSearch();
   const { currentOrganization, hasEmptyData } = useMockUser();
-  const { session } = useMockSession();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
 
@@ -112,23 +107,6 @@ export default function Header() {
             </div>
           )}
         </div>
-
-        <button
-          type="button"
-          className="ui-icon-btn relative border border-hairline bg-card shadow-card"
-          aria-label="알림"
-        >
-          <Bell size={20} className="text-ink2" strokeWidth={1.5} />
-          <span className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-danger ring-2 ring-card" />
-        </button>
-
-        <button
-          type="button"
-          className="shrink-0 rounded-full transition-transform duration-200 ease-premium hover:scale-[1.03]"
-          aria-label="프로필"
-        >
-          <Avatar initials={getUserInitials(session?.user.name ?? "게스트")} size="lg" />
-        </button>
       </div>
     </header>
   );

@@ -4,7 +4,7 @@ import { getAllPayments, getClassifications } from "@/lib/payment-repository";
 import { getLinkedPaymentIds } from "@/lib/receipt-repository";
 import { buildTransactionsFromPayments } from "@/lib/build-dashboard-from-payments";
 import { buildClassificationMap } from "@/lib/classify-payments";
-import { getBudgetCategories, getBudgetHistory, getBudgetTotal, type BudgetHistoryItem } from "@/lib/budget-repository";
+import { getBudgetCategories, getBudgetHistory, getBudgetTotal, getAnomalyThreshold, type BudgetHistoryItem } from "@/lib/budget-repository";
 import { CATEGORY_COLORS } from "@/lib/chart-colors";
 import type { BudgetCategory } from "@/lib/dashboard-types";
 
@@ -18,6 +18,7 @@ export type CategoryBudgetView = {
 export type BudgetPageData = {
   totalBudget: number;
   totalUsed: number;
+  anomalyThreshold: number;
   categories: CategoryBudgetView[];
   history: BudgetHistoryItem[];
   months: string[];
@@ -29,18 +30,24 @@ function monthLabel(date: string): string {
 }
 
 export async function getBudgetData(): Promise<BudgetPageData> {
-  const [payments, classifications, linkedPaymentIds, totalBudget, categoryBudgets, history] =
+  const [payments, classifications, linkedPaymentIds, totalBudget, anomalyThreshold, categoryBudgets, history] =
     await Promise.all([
       getAllPayments(),
       getClassifications(),
       getLinkedPaymentIds(),
       getBudgetTotal(),
+      getAnomalyThreshold(),
       getBudgetCategories(),
       getBudgetHistory(),
     ]);
 
   const classificationMap = buildClassificationMap(classifications);
-  const transactions = buildTransactionsFromPayments(payments, classificationMap, linkedPaymentIds);
+  const transactions = buildTransactionsFromPayments(
+    payments,
+    classificationMap,
+    linkedPaymentIds,
+    anomalyThreshold
+  );
 
   const usedByCategory = new Map<string, number>();
   for (const tx of transactions) {
@@ -87,6 +94,7 @@ export async function getBudgetData(): Promise<BudgetPageData> {
   return {
     totalBudget,
     totalUsed,
+    anomalyThreshold,
     categories,
     history,
     months,

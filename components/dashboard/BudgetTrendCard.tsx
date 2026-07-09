@@ -138,6 +138,9 @@ export default function BudgetTrendCard({
               setDrawerOpen(false);
               setSelectedTx(null);
             }}
+            onCategoryChange={(category) => {
+              setSelectedTx((prev) => (prev ? { ...prev, category } : null));
+            }}
           />
         </>
       )}

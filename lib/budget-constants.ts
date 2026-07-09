@@ -1,0 +1,1 @@
+export const DEFAULT_ANOMALY_THRESHOLD = 300_000;
