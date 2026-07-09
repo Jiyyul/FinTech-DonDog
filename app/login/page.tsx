@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -18,6 +18,10 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    void fetch("/api/auth/logout", { method: "POST" });
+  }, []);
+
   const handleAccountantLogin = async (event: React.FormEvent) => {
     event.preventDefault();
     setLoading(true);
@@ -34,7 +38,7 @@ export default function LoginPage() {
         setError(data.error ?? "로그인에 실패했습니다.");
         return;
       }
-      router.push("/");
+      router.push("/dashboard");
       router.refresh();
     } catch {
       setError("로그인 중 오류가 발생했습니다.");
@@ -59,7 +63,7 @@ export default function LoginPage() {
         setError(data.error ?? "입장에 실패했습니다.");
         return;
       }
-      router.push("/");
+      router.push("/dashboard");
       router.refresh();
     } catch {
       setError("입장 중 오류가 발생했습니다.");

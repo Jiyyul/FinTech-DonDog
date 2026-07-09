@@ -4,8 +4,24 @@ import { AUTH_COOKIE_NAME, decodeSession } from "@/lib/auth-session";
 
 const PUBLIC_PATHS = ["/login", "/signup", "/landing"];
 
+function clearAuthCookie(response: NextResponse) {
+  response.cookies.set(AUTH_COOKIE_NAME, "", {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+  });
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // 루트 접속 시 이전 로그인 쿠키를 지우고 로그인 화면으로 보냄
+  if (pathname === "/") {
+    const response = NextResponse.redirect(new URL("/login", request.url));
+    clearAuthCookie(response);
+    return response;
+  }
 
   if (
     PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`)) ||

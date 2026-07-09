@@ -15,6 +15,7 @@ type RecentTransactionsProps = {
   onSelect: (transaction: DashboardTransaction) => void;
   onAddReceipt: (transaction: DashboardTransaction) => void;
   onViewReceipt: (transaction: DashboardTransaction) => void;
+  showReceiptActions?: boolean;
   className?: string;
 };
 
@@ -23,12 +24,20 @@ function TransactionsTable({
   onSelect,
   onAddReceipt,
   onViewReceipt,
+  showReceiptActions = true,
 }: {
   rows: DashboardTransaction[];
   onSelect: (transaction: DashboardTransaction) => void;
   onAddReceipt: (transaction: DashboardTransaction) => void;
   onViewReceipt: (transaction: DashboardTransaction) => void;
+  showReceiptActions?: boolean;
 }) {
+  if (rows.length === 0) {
+    return (
+      <p className="py-10 text-center text-[14px] text-muted">아직 등록된 거래가 없습니다.</p>
+    );
+  }
+
   return (
     <table className="w-full table-fixed border-separate border-spacing-0">
       <thead>
@@ -38,7 +47,9 @@ function TransactionsTable({
           <th className="dash-table-head w-[12%] pr-2">날짜</th>
           <th className="dash-table-head w-[18%] pr-2 text-right">금액</th>
           <th className="dash-table-head w-[14%] pr-2 text-right">검토 상태</th>
-          <th className="dash-table-head w-[18%] text-right">영수증</th>
+          {showReceiptActions && (
+            <th className="dash-table-head w-[18%] text-right">영수증</th>
+          )}
         </tr>
       </thead>
       <tbody>
@@ -57,27 +68,29 @@ function TransactionsTable({
             <td className="pr-2 text-right">
               <StatusBadge status={tx.status} />
             </td>
-            <td className="text-right">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (tx.hasReceipt) {
-                    onViewReceipt(tx);
-                  } else {
-                    onAddReceipt(tx);
-                  }
-                }}
-                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all duration-200 ${
-                  tx.hasReceipt
-                    ? "bg-success/10 text-success"
-                    : "bg-surface text-ink2 hover:ring-1 hover:ring-hairline hover:text-ink"
-                }`}
-              >
-                <Paperclip size={11} strokeWidth={1.75} />
-                {tx.hasReceipt ? "첨부됨" : "영수증 추가"}
-              </button>
-            </td>
+            {showReceiptActions && (
+              <td className="text-right">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (tx.hasReceipt) {
+                      onViewReceipt(tx);
+                    } else {
+                      onAddReceipt(tx);
+                    }
+                  }}
+                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all duration-200 ${
+                    tx.hasReceipt
+                      ? "bg-success/10 text-success"
+                      : "bg-surface text-ink2 hover:ring-1 hover:ring-hairline hover:text-ink"
+                  }`}
+                >
+                  <Paperclip size={11} strokeWidth={1.75} />
+                  {tx.hasReceipt ? "첨부됨" : "영수증 추가"}
+                </button>
+              </td>
+            )}
           </tr>
         ))}
       </tbody>
@@ -91,6 +104,7 @@ export default function RecentTransactions({
   onSelect,
   onAddReceipt,
   onViewReceipt,
+  showReceiptActions = true,
   className = "",
 }: RecentTransactionsProps) {
   const { allTransactions } = useDashboardData();
@@ -137,6 +151,7 @@ export default function RecentTransactions({
             onSelect={onSelect}
             onAddReceipt={onAddReceipt}
             onViewReceipt={onViewReceipt}
+            showReceiptActions={showReceiptActions}
           />
         </div>
       </Card>
@@ -185,6 +200,7 @@ export default function RecentTransactions({
                   setViewAllOpen(false);
                   onViewReceipt(tx);
                 }}
+                showReceiptActions={showReceiptActions}
               />
             </div>
           </div>

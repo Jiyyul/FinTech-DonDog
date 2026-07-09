@@ -9,20 +9,15 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import AddGroupModal, {
-  toOrganization,
-  type NewGroupFormData,
-} from "@/components/layout/AddGroupModal";
+import { useRouter } from "next/navigation";
+import AddGroupModal, { type NewGroupFormData } from "@/components/layout/AddGroupModal";
+import GroupEntryCodeModal from "@/components/layout/GroupEntryCodeModal";
 import { useAuth } from "@/components/providers/AuthProvider";
-import { useDashboardData } from "@/components/providers/DashboardDataProvider";
-import { ORGANIZATIONS, type Organization } from "@/lib/mock-data";
+import type { Organization } from "@/lib/mock-data";
 
 type MockUserContextValue = {
   organizations: Organization[];
   currentOrganization: Organization | null;
-  isDemoAccount: boolean;
-  isEmptyDashboard: boolean;
-  hasEmptyData: boolean;
   addGroupOpen: boolean;
   openAddGroupModal: () => void;
   closeAddGroupModal: () => void;
@@ -30,80 +25,104 @@ type MockUserContextValue = {
 
 const MockUserContext = createContext<MockUserContextValue | null>(null);
 
-const DEMO_GROUP_ID = 1;
-
 export function MockUserProvider({ children }: { children: ReactNode }) {
-  const { session } = useAuth();
-  const { allTransactions } = useDashboardData();
+  const router = useRouter();
+  const { session, isAccountant } = useAuth();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [addGroupOpen, setAddGroupOpen] = useState(false);
+  const [entryCodeModal, setEntryCodeModal] = useState<{
+    groupName: string;
+    entryCode: string;
+  } | null>(null);
 
-  const isDemoAccount = session.groupId === DEMO_GROUP_ID;
-  const isEmptyDashboard = allTransactions.length === 0;
-  const hasEmptyData = isEmptyDashboard;
-  const currentOrganization = organizations[0] ?? null;
+  const currentOrganization =
+    organizations.find((org) => org.id === String(session.groupId)) ?? organizations[0] ?? null;
 
   const syncOrganizations = useCallback(() => {
-    if (isDemoAccount) {
-      setOrganizations(ORGANIZATIONS);
+    if (session.role === "member") {
+      setOrganizations([
+        {
+          id: String(session.groupId),
+          name: session.groupName,
+          semester: "",
+        },
+      ]);
       return;
     }
 
-    setOrganizations([
-      {
-        id: String(session.groupId),
-        name: session.groupName,
+    const groups = session.groups?.length
+      ? session.groups
+      : [{ id: session.groupId, name: session.groupName, entryCode: session.entryCode }];
+
+    setOrganizations(
+      groups.map((group) => ({
+        id: String(group.id),
+        name: group.name,
         semester: "2026년 1학기",
-      },
-    ]);
-  }, [isDemoAccount, session.groupId, session.groupName, session.role]);
+      }))
+    );
+  }, [session.groupId, session.groupName, session.entryCode, session.groups, session.role]);
 
   useEffect(() => {
     syncOrganizations();
   }, [syncOrganizations]);
 
-  const handleAddGroup = (data: NewGroupFormData) => {
-    const newOrg = toOrganization(data);
+  const handleAddGroup = async (data: NewGroupFormData) => {
+    const totalBudget = Number(data.totalBudget.replace(/,/g, ""));
+    const res = await fetch("/api/auth/groups", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        groupName: data.name,
+        totalBudget,
+      }),
+    });
 
-    if (isDemoAccount) {
-      setOrganizations((prev) => [...prev, newOrg]);
-      setAddGroupOpen(false);
-      return;
-    }
+    if (!res.ok) return;
 
-    setOrganizations((prev) => [...prev, newOrg]);
+    const json = (await res.json()) as {
+      session?: { groupName: string; entryCode: string };
+    };
+
     setAddGroupOpen(false);
+    if (json.session) {
+      setEntryCodeModal({
+        groupName: json.session.groupName,
+        entryCode: json.session.entryCode,
+      });
+    }
+    router.refresh();
   };
 
   const value = useMemo(
     () => ({
       organizations,
       currentOrganization,
-      isDemoAccount,
-      isEmptyDashboard,
-      hasEmptyData,
       addGroupOpen,
       openAddGroupModal: () => setAddGroupOpen(true),
       closeAddGroupModal: () => setAddGroupOpen(false),
     }),
-    [
-      organizations,
-      currentOrganization,
-      isDemoAccount,
-      isEmptyDashboard,
-      hasEmptyData,
-      addGroupOpen,
-    ]
+    [organizations, currentOrganization, addGroupOpen]
   );
 
   return (
     <MockUserContext.Provider value={value}>
       {children}
-      <AddGroupModal
-        open={addGroupOpen}
-        onClose={() => setAddGroupOpen(false)}
-        onSave={handleAddGroup}
-      />
+      {isAccountant && (
+        <>
+          <AddGroupModal
+            open={addGroupOpen}
+            onClose={() => setAddGroupOpen(false)}
+            onSave={handleAddGroup}
+          />
+          <GroupEntryCodeModal
+            open={!!entryCodeModal}
+            groupName={entryCodeModal?.groupName ?? ""}
+            entryCode={entryCodeModal?.entryCode ?? ""}
+            onClose={() => setEntryCodeModal(null)}
+          />
+        </>
+      )}
     </MockUserContext.Provider>
   );
 }

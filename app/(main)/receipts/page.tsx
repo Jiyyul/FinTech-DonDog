@@ -14,6 +14,7 @@ export default async function Page({
 }) {
   const session = getServerSession();
   if (!session) redirect("/login");
+  if (session.role === "member") redirect("/dashboard");
 
   const [dashboardData, receipts] = await Promise.all([
     getDashboardData(session.groupId),

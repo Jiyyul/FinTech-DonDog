@@ -8,7 +8,7 @@ const LOGO_HEIGHT = 428;
 export default function DonDogLogo() {
   return (
     <Link
-      href="/"
+      href="/dashboard"
       className="sidebar-logo-block rounded-xl transition-opacity duration-200 hover:opacity-80"
       aria-label="돈독 홈으로 이동"
     >

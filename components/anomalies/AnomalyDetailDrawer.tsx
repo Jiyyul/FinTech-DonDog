@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Paperclip, X } from "lucide-react";
 import AnomalyReasonBadge from "@/components/anomalies/AnomalyReasonBadge";
 import Button from "@/components/common/Button";
+import { useAuth } from "@/components/providers/AuthProvider";
 import { formatCurrency } from "@/lib/format";
 import type { TransactionAnomalyGroup } from "@/lib/anomalies/anomaly-types";
 import { resolveCategory, type Transaction } from "@/lib/transactions/transaction-types";
@@ -22,6 +23,7 @@ export default function AnomalyDetailDrawer({
   group,
   onClose,
 }: AnomalyDetailDrawerProps) {
+  const { canEdit } = useAuth();
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
     return () => {
@@ -71,7 +73,9 @@ export default function AnomalyDetailDrawer({
               <div className="grid grid-cols-2 gap-4 border-t border-hairline pt-6">
                 <Field label="날짜" value={transaction.transactionDate} />
                 <Field label="카테고리" value={resolveCategory(transaction.category)} />
-                <Field label="영수증" value={transaction.hasReceipt ? "등록됨" : "미등록"} />
+                {canEdit && (
+                  <Field label="영수증" value={transaction.hasReceipt ? "등록됨" : "미등록"} />
+                )}
                 <Field label="메모" value={transaction.memo ?? "-"} />
               </div>
 
@@ -104,7 +108,7 @@ export default function AnomalyDetailDrawer({
             </div>
 
             <div className="border-t border-hairline px-7 py-4">
-              {!transaction.hasReceipt ? (
+              {canEdit && !transaction.hasReceipt ? (
                 <Link href="/receipts" className="block">
                   <Button
                     variant="primary"

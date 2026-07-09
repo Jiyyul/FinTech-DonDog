@@ -19,7 +19,7 @@ export default function Header() {
   const router = useRouter();
   const { allTransactions } = useDashboardData();
   const { query, setQuery, requestSelectTransaction } = useSearch();
-  const { currentOrganization, hasEmptyData } = useMockUser();
+  const { currentOrganization } = useMockUser();
   const { session } = useMockSession();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
@@ -28,7 +28,7 @@ export default function Header() {
   const pageTitle = currentNav?.label ?? "Dashboard";
   const isDashboard = pathname === "/" || pathname === "/dashboard";
 
-  const searchTransactions = hasEmptyData ? [] : allTransactions;
+  const searchTransactions = allTransactions;
 
   const results = useMemo(() => {
     if (!query.trim()) return [];

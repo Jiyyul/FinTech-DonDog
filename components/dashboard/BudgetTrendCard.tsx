@@ -20,6 +20,7 @@ export default function BudgetTrendCard({
   const { monthlyBudgetTrend } = useDashboardData();
   const trendData = emptyData ? [] : monthlyBudgetTrend;
   const latest = trendData[trendData.length - 1];
+  const showEmptyState = trendData.length === 0;
 
   return (
     <Card
@@ -38,12 +39,24 @@ export default function BudgetTrendCard({
       </h3>
 
       <div className={`min-h-0 flex-1 ${preview ? "px-0" : "overflow-visible px-0.5"}`}>
-        <BudgetTrendChart preview={preview} data={trendData} />
+        {showEmptyState ? (
+          <div
+            className={`flex h-full w-full items-center justify-center ${
+              preview ? "min-h-[110px]" : "min-h-[240px]"
+            }`}
+          >
+            <p className="text-center text-[14px] text-muted">
+              아직 거래가 진행되지 않았습니다.
+            </p>
+          </div>
+        ) : (
+          <BudgetTrendChart preview={preview} data={trendData} />
+        )}
       </div>
 
       {!preview && (
         <AIMessage className="mt-6 shrink-0 border-t border-hairline pt-5">
-          {emptyData || !latest
+          {showEmptyState || !latest
             ? "거래 내역이 쌓이면 월별 추이를 확인할 수 있습니다."
             : `6월 사용액 전월 대비 ${formatChangeRate(latest.changeRate)} 변동했습니다.`}
         </AIMessage>

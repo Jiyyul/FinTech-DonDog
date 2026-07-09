@@ -1,6 +1,5 @@
 import { cookies } from "next/headers";
 import {
-  AUTH_COOKIE_MAX_AGE,
   AUTH_COOKIE_NAME,
   canEditSession,
   decodeSession,
@@ -19,7 +18,7 @@ export function setSessionCookie(session: AuthSession) {
     httpOnly: true,
     sameSite: "lax",
     path: "/",
-    maxAge: AUTH_COOKIE_MAX_AGE,
+    // maxAge 없음 → 브라우저 세션 쿠키 (탭/브라우저 종료 시 만료)
   });
 }
 

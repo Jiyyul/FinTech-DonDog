@@ -2,7 +2,6 @@ import { createHash } from "crypto";
 import type { AuthSession } from "@/lib/auth-types";
 
 export const AUTH_COOKIE_NAME = "dondok-auth";
-export const AUTH_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 
 export function hashPassword(password: string) {
   return createHash("sha256").update(password).digest("hex");

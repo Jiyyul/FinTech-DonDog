@@ -1,5 +1,11 @@
 export type AuthRole = "accountant" | "member";
 
+export type GroupSummary = {
+  id: number;
+  name: string;
+  entryCode: string;
+};
+
 export type AuthSession = {
   role: AuthRole;
   groupId: number;
@@ -7,6 +13,8 @@ export type AuthSession = {
   entryCode: string;
   userId?: number;
   username?: string;
+  /** 회계 담당자가 소속된 그룹 목록 (활성 그룹은 groupId) */
+  groups?: GroupSummary[];
 };
 
 export type AccountantRecord = {

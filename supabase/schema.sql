@@ -21,6 +21,14 @@ create table if not exists accountants (
 );
 create index if not exists idx_accountants_group_id on accountants (group_id);
 
+create table if not exists accountant_groups (
+  accountant_id bigint not null references accountants (id) on delete cascade,
+  group_id bigint not null references groups (id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (accountant_id, group_id)
+);
+create index if not exists idx_accountant_groups_group_id on accountant_groups (group_id);
+
 create table if not exists payments (
   id bigint generated always as identity primary key,
   group_id bigint not null references groups (id) on delete cascade,
@@ -116,6 +124,7 @@ alter table budget_total disable row level security;
 alter table budget_history disable row level security;
 alter table groups disable row level security;
 alter table accountants disable row level security;
+alter table accountant_groups disable row level security;
 
 grant usage on schema public to anon, authenticated;
 grant select, insert, update, delete on all tables in schema public to anon, authenticated;

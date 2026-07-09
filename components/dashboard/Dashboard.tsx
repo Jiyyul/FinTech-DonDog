@@ -22,7 +22,6 @@ import TransactionDrawer from "@/components/dashboard/TransactionDrawer";
 import ExceptionModal from "@/components/dashboard/ExceptionModal";
 import ScheduleFormModal from "@/components/dashboard/ScheduleFormModal";
 import FloatingAIChat from "@/components/ai/FloatingAIChat";
-import EmptyDashboard from "@/components/dashboard/EmptyDashboard";
 import { useSearch } from "@/components/layout/SearchProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useDashboardData } from "@/components/providers/DashboardDataProvider";
@@ -46,7 +45,7 @@ export default function Dashboard() {
     recentTransactions: transactions,
     activityFeed: initialActivityFeed,
   } = useDashboardData();
-  const { isEmptyDashboard, openAddGroupModal, currentOrganization } = useMockUser();
+  const { currentOrganization } = useMockUser();
   const { query, selectTransactionId, clearSelectTransaction } = useSearch();
 
   const [anomalies, setAnomalies] = useState(anomalyQueue);
@@ -248,10 +247,6 @@ export default function Dashboard() {
     router.refresh();
   };
 
-  if (isEmptyDashboard) {
-    return <EmptyDashboard onCreateClub={openAddGroupModal} />;
-  }
-
   const semester = currentOrganization?.semester ?? "2026년 1학기";
 
   return (
@@ -303,6 +298,7 @@ export default function Dashboard() {
             transactions={displayedTransactions}
             searchQuery={query}
             onSelect={handleSelectTransaction}
+            showReceiptActions={canEdit}
             onAddReceipt={(tx) => {
               if (canEdit) router.push(`/receipts?transactionId=${tx.id}`);
             }}
