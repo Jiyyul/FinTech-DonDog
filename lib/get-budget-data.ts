@@ -4,7 +4,12 @@ import { getAllPayments, getClassifications } from "@/lib/payment-repository";
 import { getLinkedPaymentIds } from "@/lib/receipt-repository";
 import { buildTransactionsFromPayments } from "@/lib/build-dashboard-from-payments";
 import { buildClassificationMap } from "@/lib/classify-payments";
-import { getBudgetCategories, getBudgetHistory, getBudgetTotal, type BudgetHistoryItem } from "@/lib/budget-repository";
+import {
+  getBudgetCategories,
+  getBudgetHistory,
+  getBudgetTotal,
+  type BudgetHistoryItem,
+} from "@/lib/budget-repository";
 import { CATEGORY_COLORS } from "@/lib/chart-colors";
 import type { BudgetCategory } from "@/lib/dashboard-types";
 
@@ -28,15 +33,15 @@ function monthLabel(date: string): string {
   return `${Number(date.slice(5, 7))}월`;
 }
 
-export async function getBudgetData(): Promise<BudgetPageData> {
+export async function getBudgetData(groupId: number): Promise<BudgetPageData> {
   const [payments, classifications, linkedPaymentIds, totalBudget, categoryBudgets, history] =
     await Promise.all([
-      getAllPayments(),
-      getClassifications(),
-      getLinkedPaymentIds(),
-      getBudgetTotal(),
-      getBudgetCategories(),
-      getBudgetHistory(),
+      getAllPayments(groupId),
+      getClassifications(groupId),
+      getLinkedPaymentIds(groupId),
+      getBudgetTotal(groupId),
+      getBudgetCategories(groupId),
+      getBudgetHistory(groupId),
     ]);
 
   const classificationMap = buildClassificationMap(classifications);

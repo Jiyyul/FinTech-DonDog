@@ -1,19 +1,27 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Building2, ChevronDown, Check } from "lucide-react";
 import type { Organization } from "@/lib/mock-data";
 
 type OrganizationSwitcherProps = {
   organizations: Organization[];
+  activeGroupId: string;
+  allowSwitch?: boolean;
 };
 
-export default function OrganizationSwitcher({ organizations }: OrganizationSwitcherProps) {
+export default function OrganizationSwitcher({
+  organizations,
+  activeGroupId,
+  allowSwitch = false,
+}: OrganizationSwitcherProps) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [switching, setSwitching] = useState(false);
 
   const selected =
-    organizations.find((org) => org.id === selectedId) ?? organizations[0] ?? null;
+    organizations.find((org) => org.id === activeGroupId) ?? organizations[0] ?? null;
 
   if (organizations.length === 0) {
     return (
@@ -23,7 +31,41 @@ export default function OrganizationSwitcher({ organizations }: OrganizationSwit
         </div>
         <div className="sidebar-label min-w-0 flex-1">
           <p className="truncate text-[13px] font-medium text-muted">모임 없음</p>
-          <p className="truncate text-[11px] text-muted">새 모임을 만들어보세요</p>
+        </div>
+      </div>
+    );
+  }
+
+  const showSwitcher = allowSwitch && organizations.length > 1;
+
+  const handleSelect = async (groupId: string) => {
+    if (groupId === selected?.id || switching) return;
+    setSwitching(true);
+    try {
+      const res = await fetch("/api/auth/switch-group", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ groupId: Number(groupId) }),
+      });
+      if (!res.ok) return;
+      setOpen(false);
+      router.refresh();
+    } finally {
+      setSwitching(false);
+    }
+  };
+
+  if (!showSwitcher) {
+    return (
+      <div className="org-switcher-btn flex w-full items-center gap-2.5 rounded-xl px-1.5 py-2">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface ring-1 ring-hairline">
+          <Building2 size={16} className="text-ink2" strokeWidth={1.5} />
+        </div>
+        <div className="sidebar-label min-w-0 flex-1">
+          <p className="truncate text-[13px] font-medium text-ink">{selected?.name}</p>
+          {selected?.semester && (
+            <p className="truncate text-[11px] text-muted">{selected.semester}</p>
+          )}
         </div>
       </div>
     );
@@ -34,7 +76,8 @@ export default function OrganizationSwitcher({ organizations }: OrganizationSwit
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="org-switcher-btn flex w-full items-center gap-2.5 rounded-xl px-1.5 py-2 text-left transition-colors duration-200 hover:bg-surface"
+        disabled={switching}
+        className="org-switcher-btn flex w-full items-center gap-2.5 rounded-xl px-1.5 py-2 text-left transition-colors duration-200 hover:bg-surface disabled:opacity-60"
         aria-expanded={open}
         aria-haspopup="listbox"
       >
@@ -67,10 +110,7 @@ export default function OrganizationSwitcher({ organizations }: OrganizationSwit
                 <li key={org.id} role="option" aria-selected={isSelected}>
                   <button
                     type="button"
-                    onClick={() => {
-                      setSelectedId(org.id);
-                      setOpen(false);
-                    }}
+                    onClick={() => handleSelect(org.id)}
                     className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors ${
                       isSelected ? "bg-surface" : "hover:bg-surface"
                     }`}

@@ -9,7 +9,8 @@
     "lint": "next lint",
     "db:seed": "npx tsx scripts/seed-db.ts",
     "classify": "npx tsx scripts/classify-payments.ts",
-    "predev": "npm run db:seed"
+    "classify:if-needed": "npx tsx scripts/classify-if-needed.ts",
+    "predev": "npm run db:seed && npm run classify:if-needed"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
@@ -21,12 +22,14 @@
     "react-chartjs-2": "^5.2.0",
     "react-dom": "^18.3.1",
     "server-only": "^0.0.1",
-    "tesseract.js": "^7.0.0"
+    "tesseract.js": "^7.0.0",
+    "ws": "^8.21.0"
   },
   "devDependencies": {
     "@types/node": "^20.14.9",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
+    "@types/ws": "^8.18.1",
     "autoprefixer": "^10.4.19",
     "postcss": "^8.4.39",
     "tailwindcss": "^3.4.6",

@@ -1,5 +1,6 @@
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
+import { ensureDemoAdmin, getDemoGroupId } from "../lib/auth-repository";
 import { getPaymentCount, seedPaymentsFromJson } from "../lib/payment-repository";
 import { seedBudgetDefaults } from "../lib/budget-repository";
 import { seedSchedulesIfEmpty } from "../lib/schedule-repository";
@@ -41,23 +42,27 @@ async function main() {
   loadEnvFile(".env.local");
   loadEnvFile(".env");
 
+  const demoGroupId = await ensureDemoAdmin();
   const force = process.argv.includes("--force");
-  const existingCount = await getPaymentCount().catch(() => 0);
+  const existingCount = await getPaymentCount(demoGroupId).catch(() => 0);
 
   if (!force && existingCount > 0) {
-    console.log(`DB가 이미 있습니다 (${existingCount}건). 재시드하려면: npm run db:seed -- --force`);
+    console.log(
+      `데모 그룹 Supabase 데이터가 이미 있습니다 (${existingCount}건). 재시드: npm run db:seed -- --force`
+    );
   } else {
     const rows = JSON.parse(readFileSync(seedPath, "utf-8")) as PaymentSeedRow[];
-    const count = await seedPaymentsFromJson(rows);
-    console.log(`DB 시드 완료: ${count}건 → Supabase payments 테이블`);
-    console.log(`현재 결제 건수: ${await getPaymentCount()}`);
+    const count = await seedPaymentsFromJson(rows, demoGroupId);
+    console.log(`DB 시드 완료: ${count}건 → Supabase (데모 group_id=${demoGroupId})`);
+    console.log(`현재 결제 건수: ${await getPaymentCount(demoGroupId)}`);
   }
 
-  await seedBudgetDefaults(DEFAULT_TOTAL_BUDGET, DEFAULT_CATEGORY_BUDGETS);
-  await seedSchedulesIfEmpty(CALENDAR_EVENTS);
+  await seedBudgetDefaults(demoGroupId, DEFAULT_TOTAL_BUDGET, DEFAULT_CATEGORY_BUDGETS);
+  await seedSchedulesIfEmpty(demoGroupId, CALENDAR_EVENTS);
 
   console.log("");
-  console.log("결제 데이터 추가: data/payments.seed.json 수정 후 npm run db:seed -- --force");
+  console.log("스키마: supabase/schema.sql (신규) 또는 supabase/migrations/002_auth_multitenant.sql (기존)");
+  console.log("결제 추가: data/payments.seed.json 수정 후 npm run db:seed -- --force");
   console.log("AI 분류: npm run classify");
 }
 

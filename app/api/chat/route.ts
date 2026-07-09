@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "@/lib/auth-server";
 import { getDashboardData, type DashboardData } from "@/lib/get-dashboard-data";
 
 export const runtime = "nodejs";
@@ -57,7 +58,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "메시지를 입력해 주세요." }, { status: 400 });
   }
 
-  const dashboardData = await getDashboardData();
+  const session = getServerSession();
+  if (!session) {
+    return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+  }
+
+  const dashboardData = await getDashboardData(session.groupId);
   const context = buildFinancialContext(dashboardData);
 
   const history = (body?.history ?? [])

@@ -31,6 +31,10 @@ type BudgetTrendChartProps = {
 };
 
 export default function BudgetTrendChart({ data, preview = false }: BudgetTrendChartProps) {
+  if (data.length === 0) {
+    return null;
+  }
+
   const lineColor = CHART_COLORS.행사비;
 
   const chartData = {

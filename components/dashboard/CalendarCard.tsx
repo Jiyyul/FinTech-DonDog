@@ -21,6 +21,7 @@ type CalendarCardProps = {
   className?: string;
   onAddEvent: () => void;
   onSelectEvent: (event: CalendarEvent) => void;
+  readOnly?: boolean;
 };
 
 export default function CalendarCard({
@@ -29,6 +30,7 @@ export default function CalendarCard({
   className = "",
   onAddEvent,
   onSelectEvent,
+  readOnly = false,
 }: CalendarCardProps) {
   const isCompact = variant === "compact";
   const [viewYear, setViewYear] = useState(2026);
@@ -186,6 +188,7 @@ export default function CalendarCard({
         })}
       </div>
 
+      {!readOnly && (
       <button
         type="button"
         onClick={onAddEvent}
@@ -196,6 +199,7 @@ export default function CalendarCard({
       >
         <Plus size={18} strokeWidth={2} />
       </button>
+      )}
     </Card>
   );
 }

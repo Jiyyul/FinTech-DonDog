@@ -1,0 +1,231 @@
+"use client";
+
+import { useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import Button from "@/components/common/Button";
+
+type Step = 1 | 2 | 3;
+
+export default function SignupPage() {
+  const router = useRouter();
+  const [step, setStep] = useState<Step>(1);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [phone, setPhone] = useState("");
+  const [affiliation, setAffiliation] = useState("");
+  const [groupName, setGroupName] = useState("");
+  const [totalBudget, setTotalBudget] = useState("");
+  const [entryCode, setEntryCode] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleStep1 = (event: React.FormEvent) => {
+    event.preventDefault();
+    setError(null);
+    if (!username || !password || !accountNumber || !phone) {
+      setError("필수 항목을 모두 입력하세요.");
+      return;
+    }
+    setStep(2);
+  };
+
+  const handleSignup = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError(null);
+
+    const parsedBudget = Number(totalBudget.replace(/,/g, ""));
+    if (!groupName.trim()) {
+      setError("동아리(모임)명을 입력하세요.");
+      return;
+    }
+    if (!Number.isFinite(parsedBudget) || parsedBudget <= 0) {
+      setError("유효한 총 예산을 입력하세요.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username,
+          password,
+          accountNumber,
+          phone,
+          affiliation: affiliation || undefined,
+          groupName,
+          totalBudget: parsedBudget,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "회원가입에 실패했습니다.");
+        return;
+      }
+      setEntryCode(data.entryCode);
+      setStep(3);
+    } catch {
+      setError("회원가입 중 오류가 발생했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-appbg px-4 py-10">
+      <div className="w-full max-w-md rounded-card border border-hairline bg-card p-8 shadow-card">
+        <div className="mb-6 flex justify-center">
+          <Image
+            src="/logo/dondog-logo.png"
+            alt="Don Dog"
+            width={453}
+            height={428}
+            className="h-10 w-auto object-contain"
+            priority
+          />
+        </div>
+
+        <h1 className="text-center text-[22px] font-semibold tracking-title-tight text-navy">
+          회계 담당자 회원가입
+        </h1>
+        <p className="mt-2 text-center text-[14px] text-muted">
+          {step === 1 && "1단계 · 담당자 정보"}
+          {step === 2 && "2단계 · 동아리(모임) 정보"}
+          {step === 3 && "가입 완료"}
+        </p>
+
+        {step === 1 && (
+          <form onSubmit={handleStep1} className="mt-6 space-y-4">
+            <Field label="아이디 *">
+              <input value={username} onChange={(e) => setUsername(e.target.value)} className="ui-input" required />
+            </Field>
+            <Field label="비밀번호 *">
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="ui-input"
+                minLength={4}
+                required
+              />
+            </Field>
+            <Field label="계좌번호 *">
+              <input
+                value={accountNumber}
+                onChange={(e) => setAccountNumber(e.target.value)}
+                className="ui-input"
+                placeholder="110-123-456789"
+                required
+              />
+            </Field>
+            <Field label="전화번호 *">
+              <input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="ui-input"
+                placeholder="010-1234-5678"
+                required
+              />
+            </Field>
+            <Field label="소속 (선택)">
+              <input
+                value={affiliation}
+                onChange={(e) => setAffiliation(e.target.value)}
+                className="ui-input"
+                placeholder="예: 경영학과"
+              />
+            </Field>
+            {error && <ErrorBox message={error} />}
+            <Button type="submit" variant="primary" className="w-full">
+              다음
+            </Button>
+          </form>
+        )}
+
+        {step === 2 && (
+          <form onSubmit={handleSignup} className="mt-6 space-y-4">
+            <Field label="동아리(모임)명 *">
+              <input
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
+                className="ui-input"
+                placeholder="예: AI 핀테크 동아리"
+                required
+              />
+            </Field>
+            <Field label="총 예산(운영비) *">
+              <input
+                type="text"
+                inputMode="numeric"
+                value={totalBudget}
+                onChange={(e) => setTotalBudget(e.target.value.replace(/[^\d,]/g, ""))}
+                className="ui-input"
+                placeholder="예: 2500000"
+                required
+              />
+            </Field>
+            <p className="text-[12px] leading-relaxed text-muted">
+              총 예산은 카테고리별 예산의 기준이 됩니다. 가입 후 예산 관리에서 세부 조정할 수 있습니다.
+            </p>
+            <p className="text-[12px] leading-relaxed text-muted">
+              가입 완료 시 10자리 입장 코드가 자동 생성됩니다.
+            </p>
+            {error && <ErrorBox message={error} />}
+            <div className="flex gap-2">
+              <Button type="button" variant="secondary" className="flex-1" onClick={() => setStep(1)}>
+                이전
+              </Button>
+              <Button type="submit" variant="primary" className="flex-1" disabled={loading}>
+                {loading ? "생성 중..." : "가입 완료"}
+              </Button>
+            </div>
+          </form>
+        )}
+
+        {step === 3 && (
+          <div className="mt-6 space-y-5">
+            <div className="rounded-2xl bg-accent-subtle px-5 py-4 text-center ring-1 ring-accent/20">
+              <p className="text-[13px] font-medium text-ink2">동아리 입장 코드</p>
+              <p className="mt-2 font-mono text-[28px] font-bold tracking-[0.2em] text-navy">{entryCode}</p>
+            </div>
+            <Button
+              type="button"
+              variant="primary"
+              className="w-full"
+              onClick={() => {
+                router.push("/dashboard");
+                router.refresh();
+              }}
+            >
+              대시보드로 이동
+            </Button>
+          </div>
+        )}
+
+        <p className="mt-6 text-center text-[13px] text-muted">
+          이미 계정이 있나요?{" "}
+          <Link href="/login" className="font-medium text-navy underline-offset-2 hover:underline">
+            로그인
+          </Link>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-[13px] font-medium text-ink2">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function ErrorBox({ message }: { message: string }) {
+  return <p className="rounded-xl bg-danger/10 px-4 py-3 text-[13px] text-danger">{message}</p>;
+}

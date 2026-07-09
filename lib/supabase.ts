@@ -1,6 +1,13 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import WebSocket from "ws";
 
 let client: SupabaseClient | null = null;
+
+function ensureNodeWebSocket() {
+  if (typeof globalThis.WebSocket === "undefined") {
+    globalThis.WebSocket = WebSocket as unknown as typeof globalThis.WebSocket;
+  }
+}
 
 /**
  * 모든 DB 접근은 서버(Server Component/Server Action/스크립트)에서만 일어난다.
@@ -12,6 +19,7 @@ let client: SupabaseClient | null = null;
  */
 export function getSupabase(): SupabaseClient {
   if (!client) {
+    ensureNodeWebSocket();
     const url = process.env.SUPABASE_URL;
     const key = process.env.SUPABASE_ANON_KEY;
     if (!url || !key) {

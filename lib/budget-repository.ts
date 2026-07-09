@@ -1,4 +1,5 @@
 import { getSupabase } from "@/lib/supabase";
+import { buildCategoryBudgetsFromTotal } from "@/lib/group-budget";
 import type { BudgetCategory } from "@/lib/dashboard-types";
 
 export type BudgetHistoryItem = {
@@ -12,18 +13,44 @@ export type BudgetHistoryItem = {
   label?: string;
 };
 
-export async function getBudgetTotal(): Promise<number> {
+export async function initializeGroupBudget(groupId: number, totalBudget: number): Promise<void> {
   const db = getSupabase();
-  const { data, error } = await db.from("budget_total").select("amount").eq("id", 1).maybeSingle();
+  const categoryBudgets = buildCategoryBudgetsFromTotal(totalBudget);
+
+  const { error: totalError } = await db
+    .from("budget_total")
+    .upsert({ group_id: groupId, amount: totalBudget }, { onConflict: "group_id" });
+  if (totalError) throw new Error(`총 예산 초기화 실패: ${totalError.message}`);
+
+  const rows = categoryBudgets.map((item) => ({
+    group_id: groupId,
+    category: item.category,
+    budget_amount: item.budget,
+  }));
+
+  const { error: categoryError } = await db
+    .from("budget_categories")
+    .upsert(rows, { onConflict: "group_id,category" });
+  if (categoryError) throw new Error(`카테고리 예산 초기화 실패: ${categoryError.message}`);
+}
+
+export async function getBudgetTotal(groupId: number): Promise<number> {
+  const db = getSupabase();
+  const { data, error } = await db
+    .from("budget_total")
+    .select("amount")
+    .eq("group_id", groupId)
+    .maybeSingle();
   if (error) throw new Error(`총 예산 조회 실패: ${error.message}`);
   return data?.amount ?? 0;
 }
 
-export async function getBudgetCategories(): Promise<Record<string, number>> {
+export async function getBudgetCategories(groupId: number): Promise<Record<string, number>> {
   const db = getSupabase();
   const { data, error } = await db
     .from("budget_categories")
     .select("category, budget_amount")
+    .eq("group_id", groupId)
     .order("category", { ascending: true });
   if (error) throw new Error(`카테고리 예산 조회 실패: ${error.message}`);
 
@@ -34,11 +61,12 @@ export async function getBudgetCategories(): Promise<Record<string, number>> {
   return map;
 }
 
-export async function getBudgetHistory(): Promise<BudgetHistoryItem[]> {
+export async function getBudgetHistory(groupId: number): Promise<BudgetHistoryItem[]> {
   const db = getSupabase();
   const { data, error } = await db
     .from("budget_history")
     .select("id, occurred_at, category, from_amount, to_amount, actor, type, label")
+    .eq("group_id", groupId)
     .order("occurred_at", { ascending: false });
 
   if (error) throw new Error(`예산 변경 이력 조회 실패: ${error.message}`);
@@ -60,16 +88,21 @@ function formatHistoryDate(iso: string): string {
   return `${date.getMonth() + 1}월 ${date.getDate()}일`;
 }
 
-export async function setBudgetTotal(nextAmount: number, actor?: string): Promise<void> {
+export async function setBudgetTotal(
+  groupId: number,
+  nextAmount: number,
+  actor?: string
+): Promise<void> {
   const db = getSupabase();
-  const current = await getBudgetTotal();
+  const current = await getBudgetTotal(groupId);
 
   const { error: upsertError } = await db
     .from("budget_total")
-    .upsert({ id: 1, amount: nextAmount }, { onConflict: "id" });
+    .upsert({ group_id: groupId, amount: nextAmount }, { onConflict: "group_id" });
   if (upsertError) throw new Error(`총 예산 저장 실패: ${upsertError.message}`);
 
   const { error: historyError } = await db.from("budget_history").insert({
+    group_id: groupId,
     category: "총 예산",
     from_amount: current,
     to_amount: nextAmount,
@@ -80,20 +113,25 @@ export async function setBudgetTotal(nextAmount: number, actor?: string): Promis
 }
 
 export async function setCategoryBudget(
+  groupId: number,
   category: BudgetCategory,
   nextAmount: number,
   actor?: string
 ): Promise<void> {
   const db = getSupabase();
-  const categories = await getBudgetCategories();
+  const categories = await getBudgetCategories(groupId);
   const current = categories[category] ?? 0;
 
   const { error: upsertError } = await db
     .from("budget_categories")
-    .upsert({ category, budget_amount: nextAmount }, { onConflict: "category" });
+    .upsert(
+      { group_id: groupId, category, budget_amount: nextAmount },
+      { onConflict: "group_id,category" }
+    );
   if (upsertError) throw new Error(`카테고리 예산 저장 실패: ${upsertError.message}`);
 
   const { error: historyError } = await db.from("budget_history").insert({
+    group_id: groupId,
     category,
     from_amount: current,
     to_amount: nextAmount,
@@ -103,33 +141,40 @@ export async function setCategoryBudget(
   if (historyError) throw new Error(`예산 변경 이력 저장 실패: ${historyError.message}`);
 }
 
-/** 시드 스크립트 전용: 이력 기록 없이 초기 예산 값만 채운다. 이미 값이 있으면 건드리지 않는다. */
 export async function seedBudgetDefaults(
+  groupId: number,
   totalBudget: number,
   categoryBudgets: Record<string, number>
 ): Promise<void> {
-  const db = getSupabase();
-
-  const existingTotal = await getBudgetTotal();
+  const existingTotal = await getBudgetTotal(groupId);
   if (existingTotal === 0) {
-    const { error } = await db.from("budget_total").upsert({ id: 1, amount: totalBudget });
-    if (error) throw new Error(`총 예산 시드 실패: ${error.message}`);
+    await initializeGroupBudget(groupId, totalBudget);
+    return;
   }
 
-  const existingCategories = await getBudgetCategories();
+  const existingCategories = await getBudgetCategories(groupId);
   if (Object.keys(existingCategories).length === 0) {
+    const db = getSupabase();
     const rows = Object.entries(categoryBudgets).map(([category, budget_amount]) => ({
+      group_id: groupId,
       category,
       budget_amount,
     }));
-    const { error } = await db.from("budget_categories").upsert(rows, { onConflict: "category" });
+    const { error } = await db
+      .from("budget_categories")
+      .upsert(rows, { onConflict: "group_id,category" });
     if (error) throw new Error(`카테고리 예산 시드 실패: ${error.message}`);
   }
 }
 
-export async function recordAiReviewHistory(category: string, label: string): Promise<void> {
+export async function recordAiReviewHistory(
+  groupId: number,
+  category: string,
+  label: string
+): Promise<void> {
   const db = getSupabase();
   const { error } = await db.from("budget_history").insert({
+    group_id: groupId,
     category,
     from_amount: 0,
     to_amount: 0,

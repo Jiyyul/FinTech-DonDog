@@ -27,7 +27,7 @@ export default function AuditModal({ open, onClose }: AuditModalProps) {
     };
   }, [open]);
 
-  if (!open) return null;
+  if (!open || !tx) return null;
 
   return (
     <>

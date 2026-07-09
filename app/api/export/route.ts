@@ -1,3 +1,4 @@
+import { getServerSession } from "@/lib/auth-server";
 import { getDashboardData } from "@/lib/get-dashboard-data";
 
 export const runtime = "nodejs";
@@ -16,7 +17,12 @@ function escapeCsvField(value: string): string {
 }
 
 export async function GET() {
-  const data = await getDashboardData();
+  const session = getServerSession();
+  if (!session) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
+  const data = await getDashboardData(session.groupId);
 
   const header = ["날짜", "결제처", "카테고리", "금액", "상태", "결제수단", "영수증", "거래번호"];
   const rows = data.allTransactions.map((tx) => [

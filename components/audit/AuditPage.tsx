@@ -15,12 +15,14 @@ import AuditCard from "@/components/dashboard/AuditCard";
 import AnomalyReviewModal from "@/components/dashboard/AnomalyReviewModal";
 import ExceptionModal from "@/components/dashboard/ExceptionModal";
 import Card from "@/components/common/Card";
+import { useAuth } from "@/components/providers/AuthProvider";
 import { useDashboardData } from "@/components/providers/DashboardDataProvider";
 import { ANOMALY_TYPE_LABELS, type AuditAnomaly } from "@/lib/dashboard-types";
 import { formatCurrency } from "@/lib/format";
 
 export default function AuditPage() {
   const router = useRouter();
+  const { canEdit } = useAuth();
   const { anomalyQueue, calendarEvents } = useDashboardData();
   const [anomalies, setAnomalies] = useState(anomalyQueue);
   const [deferredAnomalies, setDeferredAnomalies] = useState<AuditAnomaly[]>([]);
@@ -70,6 +72,7 @@ export default function AuditPage() {
           className="h-full"
           anomalies={anomalies}
           deferredAnomalies={deferredAnomalies}
+          readOnly={!canEdit}
           onReview={openReview}
           onReviewDeferred={openReview}
         />
@@ -85,8 +88,9 @@ export default function AuditPage() {
               <li key={item.id}>
                 <button
                   type="button"
-                  onClick={() => openReview(item)}
-                  className="flex w-full flex-col gap-1 rounded-2xl border border-hairline bg-surface/50 px-4 py-3 text-left transition-colors duration-200 hover:bg-surface"
+                  onClick={() => canEdit && openReview(item)}
+                  disabled={!canEdit}
+                  className="flex w-full flex-col gap-1 rounded-2xl border border-hairline bg-surface/50 px-4 py-3 text-left transition-colors duration-200 hover:bg-surface disabled:cursor-default disabled:opacity-80"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-medium text-ink">{item.transaction.merchant}</span>
@@ -105,6 +109,8 @@ export default function AuditPage() {
         )}
       </Card>
 
+      {canEdit && (
+        <>
       <AnomalyReviewModal
         open={modalOpen}
         anomaly={selectedAnomaly}
@@ -178,6 +184,8 @@ export default function AuditPage() {
           router.refresh();
         }}
       />
+        </>
+      )}
     </div>
   );
 }

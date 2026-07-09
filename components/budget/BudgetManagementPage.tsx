@@ -9,6 +9,7 @@ import Button from "@/components/common/Button";
 import type { BudgetCategory } from "@/lib/dashboard-types";
 import { formatCurrency } from "@/lib/format";
 import { updateCategoryBudgetAction, updateTotalBudgetAction } from "@/lib/actions/budget-actions";
+import { useAuth } from "@/components/providers/AuthProvider";
 import type { BudgetPageData } from "@/lib/get-budget-data";
 
 type TrendFilter = "전체" | BudgetCategory;
@@ -18,6 +19,7 @@ const inputClass =
 
 export default function BudgetManagementPage({ data }: { data: BudgetPageData }) {
   const router = useRouter();
+  const { canEdit } = useAuth();
   const { totalBudget, totalUsed, categories, history, months, monthlyByCategory } = data;
 
   const [totalBudgetInput, setTotalBudgetInput] = useState(String(totalBudget));
@@ -81,7 +83,7 @@ export default function BudgetManagementPage({ data }: { data: BudgetPageData })
             className={`min-w-[12rem] flex-1 ${inputClass}`}
             min={0}
           />
-          <Button type="button" variant="primary" onClick={handleTotalBudgetSave} disabled={saving}>
+          <Button type="button" variant="primary" onClick={handleTotalBudgetSave} disabled={!canEdit || saving}>
             {saving ? "저장 중..." : "저장"}
           </Button>
         </div>

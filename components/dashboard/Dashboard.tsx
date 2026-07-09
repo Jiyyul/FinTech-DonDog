@@ -22,14 +22,12 @@ import TransactionDrawer from "@/components/dashboard/TransactionDrawer";
 import ExceptionModal from "@/components/dashboard/ExceptionModal";
 import ScheduleFormModal from "@/components/dashboard/ScheduleFormModal";
 import FloatingAIChat from "@/components/ai/FloatingAIChat";
-import EmptyDashboard from "@/components/dashboard/EmptyDashboard";
 import { useSearch } from "@/components/layout/SearchProvider";
+import { useAuth } from "@/components/providers/AuthProvider";
 import { useDashboardData } from "@/components/providers/DashboardDataProvider";
 import { useMockUser } from "@/components/providers/MockUserProvider";
-import { prependActivity } from "@/lib/activity-feed";
 import { matchesSearch } from "@/lib/search-utils";
 import type {
-  ActivityItem,
   AuditAnomaly,
   BudgetCategory,
   CalendarEvent,
@@ -38,26 +36,20 @@ import type {
 
 export default function Dashboard() {
   const router = useRouter();
+  const { canEdit } = useAuth();
   const {
     anomalyQueue,
     calendarEvents: initialCalendarEvents,
     recentTransactions: transactions,
-    activityFeed: initialActivityFeed,
+    activityFeed,
+    logActivity,
   } = useDashboardData();
-  const { isEmptyDashboard, openAddGroupModal, currentOrganization } = useMockUser();
+  const { currentOrganization } = useMockUser();
   const { query, selectTransactionId, clearSelectTransaction } = useSearch();
 
   const [anomalies, setAnomalies] = useState(anomalyQueue);
   const [deferredAnomalies, setDeferredAnomalies] = useState<AuditAnomaly[]>([]);
   const [calendarEvents, setCalendarEvents] = useState(initialCalendarEvents);
-  const [activities, setActivities] = useState<ActivityItem[]>(initialActivityFeed);
-
-  const logActivity = (
-    message: string,
-    options?: { hasDogIcon?: boolean; icon?: ActivityItem["icon"] }
-  ) => {
-    setActivities((prev) => prependActivity(prev, message, options));
-  };
 
   const [anomalyModalOpen, setAnomalyModalOpen] = useState(false);
   const [selectedAnomaly, setSelectedAnomaly] = useState<AuditAnomaly | null>(null);
@@ -79,7 +71,12 @@ export default function Dashboard() {
       anomalies.find((a) => a.transaction.id === tx.id) ??
       deferredAnomalies.find((a) => a.transaction.id === tx.id);
     if (linkedAnomaly) {
-      openAnomalyReview(linkedAnomaly);
+      if (canEdit) {
+        openAnomalyReview(linkedAnomaly);
+      } else {
+        setSelectedTx(tx);
+        setTxDrawerOpen(true);
+      }
       return;
     }
     setSelectedTx(tx);
@@ -241,10 +238,6 @@ export default function Dashboard() {
     router.refresh();
   };
 
-  if (isEmptyDashboard) {
-    return <EmptyDashboard onCreateClub={openAddGroupModal} />;
-  }
-
   const semester = currentOrganization?.semester ?? "2026년 1학기";
 
   return (
@@ -258,6 +251,7 @@ export default function Dashboard() {
             className="h-full min-h-[360px]"
             anomalies={anomalies}
             deferredAnomalies={deferredAnomalies}
+            readOnly={!canEdit}
             onReview={openAnomalyReview}
             onReviewDeferred={openAnomalyReview}
           />
@@ -270,6 +264,7 @@ export default function Dashboard() {
             variant="compact"
             className="h-full min-h-[360px]"
             events={calendarEvents}
+            readOnly={!canEdit}
             onAddEvent={() => {
               setEditingEvent(null);
               setScheduleFormOpen(true);
@@ -294,33 +289,53 @@ export default function Dashboard() {
             transactions={displayedTransactions}
             searchQuery={query}
             onSelect={handleSelectTransaction}
-            onAddReceipt={(tx) => router.push(`/receipts?transactionId=${tx.id}`)}
+            showReceiptActions={canEdit}
+            onAddReceipt={(tx) => {
+              if (canEdit) router.push(`/receipts?transactionId=${tx.id}`);
+            }}
             onViewReceipt={() => router.push("/receipts")}
           />
         </div>
         <div className="dash-grid-cell min-w-0">
-          <ActivityFeedCard activities={activities} className="h-full min-h-0" />
+          <ActivityFeedCard activities={activityFeed} className="h-full min-h-0" />
         </div>
       </section>
 
-      <AnomalyReviewModal
-        open={anomalyModalOpen}
-        anomaly={selectedAnomaly}
-        onClose={closeAnomalyModal}
-        onApprove={handleApprove}
-        onException={() => setExceptionModalOpen(true)}
-        onDefer={handleDefer}
-        onRequestCoApproval={handleCoApproval}
-        onCategoryChange={handleCategoryChange}
-      />
+      {canEdit && (
+        <>
+          <AnomalyReviewModal
+            open={anomalyModalOpen}
+            anomaly={selectedAnomaly}
+            onClose={closeAnomalyModal}
+            onApprove={handleApprove}
+            onException={() => setExceptionModalOpen(true)}
+            onDefer={handleDefer}
+            onRequestCoApproval={handleCoApproval}
+            onCategoryChange={handleCategoryChange}
+          />
 
-      <ExceptionModal
-        open={exceptionModalOpen}
-        schedules={calendarEvents}
-        onClose={() => setExceptionModalOpen(false)}
-        onLinkSchedule={handleLinkSchedule}
-        onDefer={handleDefer}
-      />
+          <ExceptionModal
+            open={exceptionModalOpen}
+            schedules={calendarEvents}
+            onClose={() => setExceptionModalOpen(false)}
+            onLinkSchedule={handleLinkSchedule}
+            onDefer={handleDefer}
+          />
+
+          <ScheduleFormModal
+            open={scheduleFormOpen}
+            initial={editingEvent}
+            year={2026}
+            month={7}
+            onClose={() => {
+              setScheduleFormOpen(false);
+              setEditingEvent(null);
+            }}
+            onSave={handleSaveEvent}
+            onDelete={handleDeleteEvent}
+          />
+        </>
+      )}
 
       <TransactionDrawer
         open={txDrawerOpen}
@@ -329,19 +344,6 @@ export default function Dashboard() {
           setTxDrawerOpen(false);
           setSelectedTx(null);
         }}
-      />
-
-      <ScheduleFormModal
-        open={scheduleFormOpen}
-        initial={editingEvent}
-        year={2026}
-        month={7}
-        onClose={() => {
-          setScheduleFormOpen(false);
-          setEditingEvent(null);
-        }}
-        onSave={handleSaveEvent}
-        onDelete={handleDeleteEvent}
       />
 
       <FloatingAIChat />

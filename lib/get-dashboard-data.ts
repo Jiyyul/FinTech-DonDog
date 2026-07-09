@@ -42,7 +42,7 @@ export type DashboardData = {
   amountThreshold: number;
   doughnutCenterPercent: number;
   budgetSlices: BudgetCategorySlice[];
-  pendingAuditTransaction: DashboardTransaction;
+  pendingAuditTransaction: DashboardTransaction | null;
   anomalyQueue: AuditAnomaly[];
   recentTransactions: DashboardTransaction[];
   allTransactions: DashboardTransaction[];
@@ -54,7 +54,7 @@ export type DashboardData = {
   currentAccountBalance: number;
 };
 
-export async function getDashboardData(): Promise<DashboardData> {
+export async function getDashboardData(groupId: number): Promise<DashboardData> {
   const [
     payments,
     classifications,
@@ -65,14 +65,14 @@ export async function getDashboardData(): Promise<DashboardData> {
     balances,
     calendarEvents,
   ] = await Promise.all([
-    getAllPayments(),
-    getClassifications(),
-    getBudgetTotal(),
-    getBudgetCategories(),
-    getReviewStatusMap(),
-    getLinkedPaymentIds(),
-    getAccountBalances(),
-    getSchedules(),
+    getAllPayments(groupId),
+    getClassifications(groupId),
+    getBudgetTotal(groupId),
+    getBudgetCategories(groupId),
+    getReviewStatusMap(groupId),
+    getLinkedPaymentIds(groupId),
+    getAccountBalances(groupId),
+    getSchedules(groupId),
   ]);
 
   const classificationMap = buildClassificationMap(classifications);
@@ -83,7 +83,6 @@ export async function getDashboardData(): Promise<DashboardData> {
   const anomalies = buildAnomalyQueue(transactions, budgetTotal, calendarEvents, reviewStatusMap);
   const pendingIds = new Set(anomalies.map((a) => a.transaction.id));
   const budgetStats = buildBudgetStats(transactions, budgetTotal, pendingIds);
-  // 사용률/사용금액/잔액과 동일하게, 검토 대기(승인 전) 거래는 도넛 차트에서도 제외한다.
   const committedTransactions = transactions.filter((t) => !pendingIds.has(t.id));
   const slices = buildBudgetSlices(committedTransactions);
   const report = buildAiReportSummary(transactions, anomalies, current, categoryBudgets);
@@ -91,7 +90,9 @@ export async function getDashboardData(): Promise<DashboardData> {
   const monthlyTrend = buildMonthlyBudgetTrend(payments, budgetTotal, initial);
 
   const pendingAuditTransaction =
-    transactions.find((t) => t.status === "review") ?? transactions[0];
+    transactions.find((t) => t.status === "review") ?? transactions[0] ?? null;
+
+  const hasPayments = payments.length > 0;
 
   return {
     budgetTotal: budgetStats.total,
@@ -99,7 +100,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     budgetPendingUsed: budgetStats.pendingUsed,
     budgetRemaining: budgetStats.remaining,
     budgetUsagePercent: budgetStats.usagePercent,
-    budgetUsageSpeedPercent: budgetStats.usageSpeedPercent,
+    budgetUsageSpeedPercent: hasPayments ? budgetStats.usageSpeedPercent : 0,
     amountThreshold: AMOUNT_THRESHOLD_EXPORT,
     doughnutCenterPercent: budgetStats.doughnutCenterPercent,
     budgetSlices: slices,
@@ -108,9 +109,19 @@ export async function getDashboardData(): Promise<DashboardData> {
     recentTransactions: transactions.slice(0, 4),
     allTransactions: allTx,
     aiReportSummary: report,
-    activityFeed: activity,
+    activityFeed: hasPayments
+      ? [
+          ...activity,
+          {
+            id: "act-4",
+            time: "1시간 전",
+            message: "AI 회계 리포트가 생성되었습니다.",
+            hasDogIcon: true,
+          },
+        ]
+      : [],
     monthlyBudgetTrend: monthlyTrend,
-    calendarEvents,
+    calendarEvents: hasPayments ? calendarEvents : [],
     aiChatSuggestions: AI_CHAT_SUGGESTIONS,
     currentAccountBalance: current,
   };

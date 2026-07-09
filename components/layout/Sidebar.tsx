@@ -6,26 +6,34 @@ import OrganizationSwitcher from "@/components/layout/OrganizationSwitcher";
 import SidebarNavItem from "@/components/layout/SidebarNavItem";
 import SidebarUser from "@/components/layout/SidebarUser";
 import { NAV_ITEMS } from "@/lib/navigation";
+import { useAuth } from "@/components/providers/AuthProvider";
 import { useMockUser } from "@/components/providers/MockUserProvider";
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { canEdit, isAccountant, session } = useAuth();
   const { organizations, openAddGroupModal } = useMockUser();
+
+  const navItems = NAV_ITEMS.filter((item) => canEdit || item.href !== "/receipts");
 
   return (
     <aside className="sidebar group fixed left-3 top-3 z-50 flex h-[calc(100vh-1.5rem)] w-[72px] flex-col overflow-hidden rounded-card border border-hairline bg-sidebar p-4 shadow-card transition-[width] duration-300 ease-premium hover:w-[240px]">
       <div className="mb-5 shrink-0 pt-0.5">
         <DonDogLogo />
         <div className="mt-3">
-          <OrganizationSwitcher organizations={organizations} />
+          <OrganizationSwitcher
+            organizations={organizations}
+            activeGroupId={String(session.groupId)}
+            allowSwitch={isAccountant}
+          />
         </div>
       </div>
 
       <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden py-1">
-        {NAV_ITEMS.map((item) => {
+        {navItems.map((item) => {
           const isActive =
-            item.href === "/"
-              ? pathname === "/"
+            item.href === "/dashboard"
+              ? pathname === "/dashboard"
               : pathname.startsWith(item.href);
 
           return (

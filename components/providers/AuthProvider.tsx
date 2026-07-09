@@ -1,0 +1,42 @@
+"use client";
+
+import { createContext, useContext, useMemo, type ReactNode } from "react";
+import type { AuthSession } from "@/lib/auth-types";
+import { canEditSession } from "@/lib/auth-session";
+
+type AuthContextValue = {
+  session: AuthSession;
+  canEdit: boolean;
+  isAccountant: boolean;
+  isMember: boolean;
+};
+
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+export function AuthProvider({
+  session,
+  children,
+}: {
+  session: AuthSession;
+  children: ReactNode;
+}) {
+  const value = useMemo(
+    () => ({
+      session,
+      canEdit: canEditSession(session),
+      isAccountant: session.role === "accountant",
+      isMember: session.role === "member",
+    }),
+    [session]
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within AuthProvider");
+  }
+  return context;
+}

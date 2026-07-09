@@ -3,6 +3,7 @@ import type { CalendarEvent } from "@/lib/dashboard-types";
 
 type ScheduleRow = {
   id: string;
+  group_id: number;
   title: string;
   event_date: string;
   color: string;
@@ -26,11 +27,12 @@ function toEventDate(event: { year: number; month: number; date: number }): stri
   return `${event.year}-${String(event.month).padStart(2, "0")}-${String(event.date).padStart(2, "0")}`;
 }
 
-export async function getSchedules(): Promise<CalendarEvent[]> {
+export async function getSchedules(groupId: number): Promise<CalendarEvent[]> {
   const db = getSupabase();
   const { data, error } = await db
     .from("schedules")
     .select("*")
+    .eq("group_id", groupId)
     .order("event_date", { ascending: true });
 
   if (error) throw new Error(`일정 조회 실패: ${error.message}`);
@@ -38,6 +40,7 @@ export async function getSchedules(): Promise<CalendarEvent[]> {
 }
 
 export async function saveSchedule(
+  groupId: number,
   event: Omit<CalendarEvent, "id"> & { id?: string }
 ): Promise<CalendarEvent> {
   const db = getSupabase();
@@ -48,12 +51,13 @@ export async function saveSchedule(
     .upsert(
       {
         id,
+        group_id: groupId,
         title: event.title,
         event_date: toEventDate(event),
         color: event.color,
         description: event.description,
       },
-      { onConflict: "id" }
+      { onConflict: "group_id,id" }
     )
     .select("*")
     .single();
@@ -62,19 +66,23 @@ export async function saveSchedule(
   return mapSchedule(data as ScheduleRow);
 }
 
-export async function deleteSchedule(id: string): Promise<void> {
+export async function deleteSchedule(groupId: number, id: string): Promise<void> {
   const db = getSupabase();
-  const { error } = await db.from("schedules").delete().eq("id", id);
+  const { error } = await db.from("schedules").delete().eq("group_id", groupId).eq("id", id);
   if (error) throw new Error(`일정 삭제 실패: ${error.message}`);
 }
 
-export async function seedSchedulesIfEmpty(defaults: CalendarEvent[]): Promise<void> {
-  const existing = await getSchedules();
+export async function seedSchedulesIfEmpty(
+  groupId: number,
+  defaults: CalendarEvent[]
+): Promise<void> {
+  const existing = await getSchedules(groupId);
   if (existing.length > 0) return;
 
   const db = getSupabase();
   const rows = defaults.map((event) => ({
     id: event.id,
+    group_id: groupId,
     title: event.title,
     event_date: toEventDate(event),
     color: event.color,

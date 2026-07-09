@@ -4,4 +4,6 @@ out
 .env*
 !.env.example
 .DS_Store
+data/dondok.db
+data/dondok.db-*
 tsconfig.tsbuildinfo

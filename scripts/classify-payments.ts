@@ -1,5 +1,6 @@
 import { readFileSync, existsSync, writeFileSync } from "fs";
 import { join } from "path";
+import { getDemoGroupId } from "../lib/auth-repository";
 import { classifyPaymentsWithOpenAI } from "../lib/openai-classify";
 import {
   getPaymentCount,
@@ -36,12 +37,14 @@ async function main() {
     process.exit(1);
   }
 
-  if ((await getPaymentCount()) === 0) {
-    console.error("결제 데이터가 없습니다. 먼저 npm run db:seed 를 실행하세요.");
+  const demoGroupId = await getDemoGroupId();
+
+  if ((await getPaymentCount(demoGroupId)) === 0) {
+    console.error("데모 그룹 결제 데이터가 없습니다. 먼저 npm run db:seed 를 실행하세요.");
     process.exit(1);
   }
 
-  const unclassified = await getUnclassifiedPayments();
+  const unclassified = await getUnclassifiedPayments(demoGroupId);
   if (unclassified.length === 0) {
     console.log("분류할 결제가 없습니다. 모든 건이 이미 분류되어 있습니다.");
     return;

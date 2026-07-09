@@ -3,11 +3,9 @@ import { paymentIdToTransactionId, transactionIdToPaymentId } from "@/lib/paymen
 import { createPayment } from "@/lib/payment-repository";
 import type { ParsedReceipt, Receipt, ReceiptItem } from "@/lib/receipts/receipt-types";
 
-const GROUP_ID = "group_001";
-
 type ReceiptRow = {
   id: string;
-  group_id: string;
+  group_id: number;
   merchant: string;
   purchased_at: string;
   purchased_time: string | null;
@@ -28,7 +26,7 @@ type ReceiptRow = {
 function mapReceipt(row: ReceiptRow): Receipt {
   return {
     id: row.id,
-    groupId: row.group_id,
+    groupId: String(row.group_id),
     merchant: row.merchant,
     purchasedAt: row.purchased_at,
     purchasedTime: row.purchased_time,
@@ -48,21 +46,25 @@ function mapReceipt(row: ReceiptRow): Receipt {
   };
 }
 
-export async function getReceipts(): Promise<Receipt[]> {
+export async function getReceipts(groupId: number): Promise<Receipt[]> {
   const db = getSupabase();
   const { data, error } = await db
     .from("receipts")
     .select("*")
+    .eq("group_id", groupId)
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(`영수증 조회 실패: ${error.message}`);
   return (data as ReceiptRow[]).map(mapReceipt);
 }
 
-/** payment_id -> true (영수증이 연결된 결제 id 집합). hasReceipt 계산에 사용. */
-export async function getLinkedPaymentIds(): Promise<Set<number>> {
+export async function getLinkedPaymentIds(groupId: number): Promise<Set<number>> {
   const db = getSupabase();
-  const { data, error } = await db.from("receipts").select("linked_payment_id");
+  const { data, error } = await db
+    .from("receipts")
+    .select("linked_payment_id")
+    .eq("group_id", groupId);
+
   if (error) throw new Error(`영수증 연결 조회 실패: ${error.message}`);
 
   return new Set(
@@ -73,6 +75,7 @@ export async function getLinkedPaymentIds(): Promise<Set<number>> {
 }
 
 export async function saveReceipt(
+  groupId: number,
   data: ParsedReceipt & {
     fileName: string;
     fileType: string;
@@ -88,7 +91,7 @@ export async function saveReceipt(
 
   // 연결할 기존 거래가 없으면 OCR로 읽은 값으로 새 거래(payment) 행을 만들어 연결한다.
   if (linkedPaymentId == null) {
-    const payment = await createPayment({
+    const payment = await createPayment(groupId, {
       merchant: data.merchant,
       amount: data.totalAmount,
       transactedAt: data.purchasedAt,
@@ -103,7 +106,7 @@ export async function saveReceipt(
     .from("receipts")
     .insert({
       id,
-      group_id: GROUP_ID,
+      group_id: groupId,
       merchant: data.merchant,
       purchased_at: data.purchasedAt,
       purchased_time: data.purchasedTime,
@@ -143,7 +146,7 @@ export async function convertReceiptToPayment(receiptId: string): Promise<Receip
   const receipt = mapReceipt(row as ReceiptRow);
   if (receipt.linkedTransactionId) return receipt;
 
-  const payment = await createPayment({
+  const payment = await createPayment(Number(receipt.groupId), {
     merchant: receipt.merchant,
     amount: receipt.totalAmount,
     transactedAt: receipt.purchasedAt,

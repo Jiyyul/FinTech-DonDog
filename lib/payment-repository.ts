@@ -1,8 +1,7 @@
 import { getSupabase } from "@/lib/supabase";
+import { getBudgetTotal } from "@/lib/budget-repository";
 import type { PaymentClassificationRow, PaymentRecord, PaymentSeedRow } from "@/lib/payment-types";
 import type { BudgetCategory } from "@/lib/dashboard-types";
-
-const INITIAL_ACCOUNT_BALANCE = 2_500_000;
 
 type PaymentRow = {
   id: number;
@@ -24,22 +23,35 @@ function mapPayment(row: PaymentRow): PaymentRecord {
   };
 }
 
-export async function seedPaymentsFromJson(rows: PaymentSeedRow[]): Promise<number> {
+export async function seedPaymentsFromJson(
+  rows: PaymentSeedRow[],
+  groupId: number
+): Promise<number> {
   const db = getSupabase();
+  const initialBalance = await getBudgetTotal(groupId);
 
-  await db.from("payment_classifications").delete().neq("payment_id", -1);
-  await db.from("transaction_reviews").delete().neq("payment_id", -1);
-  await db.from("payments").delete().neq("id", -1);
+  const { data: existingPayments } = await db
+    .from("payments")
+    .select("id")
+    .eq("group_id", groupId);
+
+  const paymentIds = (existingPayments ?? []).map((row) => row.id);
+  if (paymentIds.length > 0) {
+    await db.from("payment_classifications").delete().in("payment_id", paymentIds);
+    await db.from("transaction_reviews").delete().in("payment_id", paymentIds);
+    await db.from("payments").delete().eq("group_id", groupId);
+  }
 
   const sorted = [...rows].sort((a, b) => {
     const dateCmp = a.transacted_at.localeCompare(b.transacted_at);
     return dateCmp !== 0 ? dateCmp : a.merchant.localeCompare(b.merchant);
   });
 
-  let balance = INITIAL_ACCOUNT_BALANCE;
+  let balance = initialBalance || 2_500_000;
   const insertRows = sorted.map((item) => {
     balance -= item.amount;
     return {
+      group_id: groupId,
       merchant: item.merchant,
       amount: item.amount,
       balance_after: balance,
@@ -56,21 +68,24 @@ export async function seedPaymentsFromJson(rows: PaymentSeedRow[]): Promise<numb
 
 /**
  * 영수증만 있고 연결할 기존 거래가 없을 때, 새 거래(payment) 행을 만든다.
- * balance_after는 정확한 시계열 재계산 대신 현재 잔액 기준 근사치를 사용한다 (mock 데이터 한계).
  */
-export async function createPayment(data: {
-  merchant: string;
-  amount: number;
-  transactedAt: string;
-  paymentMethod?: string;
-}): Promise<PaymentRecord> {
+export async function createPayment(
+  groupId: number,
+  data: {
+    merchant: string;
+    amount: number;
+    transactedAt: string;
+    paymentMethod?: string;
+  }
+): Promise<PaymentRecord> {
   const db = getSupabase();
-  const { current } = await getAccountBalances();
+  const { current } = await getAccountBalances(groupId);
   const balanceAfter = current - data.amount;
 
   const { data: inserted, error } = await db
     .from("payments")
     .insert({
+      group_id: groupId,
       merchant: data.merchant,
       amount: data.amount,
       balance_after: balanceAfter,
@@ -108,11 +123,12 @@ export async function updatePayment(
   return mapPayment(updated as PaymentRow);
 }
 
-export async function getAllPayments(): Promise<PaymentRecord[]> {
+export async function getAllPayments(groupId: number): Promise<PaymentRecord[]> {
   const db = getSupabase();
   const { data, error } = await db
     .from("payments")
     .select("id, merchant, amount, balance_after, transacted_at, payment_method")
+    .eq("group_id", groupId)
     .order("transacted_at", { ascending: false })
     .order("id", { ascending: false });
 
@@ -120,20 +136,25 @@ export async function getAllPayments(): Promise<PaymentRecord[]> {
   return (data as PaymentRow[]).map(mapPayment);
 }
 
-export async function getPaymentCount(): Promise<number> {
+export async function getPaymentCount(groupId?: number): Promise<number> {
   const db = getSupabase();
-  const { count, error } = await db.from("payments").select("id", { count: "exact", head: true });
+  let query = db.from("payments").select("id", { count: "exact", head: true });
+  if (groupId != null) {
+    query = query.eq("group_id", groupId);
+  }
+  const { count, error } = await query;
   if (error) throw new Error(`결제 건수 조회 실패: ${error.message}`);
   return count ?? 0;
 }
 
-export async function getAccountBalances(): Promise<{ initial: number; current: number }> {
-  const payments = await getAllPayments();
+export async function getAccountBalances(
+  groupId: number
+): Promise<{ initial: number; current: number }> {
+  const payments = await getAllPayments(groupId);
+  const totalBudget = await getBudgetTotal(groupId);
+
   if (payments.length === 0) {
-    return {
-      initial: INITIAL_ACCOUNT_BALANCE,
-      current: INITIAL_ACCOUNT_BALANCE,
-    };
+    return { initial: totalBudget, current: totalBudget };
   }
 
   const oldest = payments[payments.length - 1];
@@ -143,11 +164,12 @@ export async function getAccountBalances(): Promise<{ initial: number; current: 
   };
 }
 
-export async function getClassifications(): Promise<PaymentClassificationRow[]> {
+export async function getClassifications(groupId: number): Promise<PaymentClassificationRow[]> {
   const db = getSupabase();
   const { data, error } = await db
     .from("payment_classifications")
-    .select("payment_id, category, confidence, source, payments!inner(merchant, transacted_at)")
+    .select("payment_id, category, confidence, source, payments!inner(merchant, transacted_at, group_id)")
+    .eq("payments.group_id", groupId)
     .order("classified_at", { ascending: false });
 
   if (error) throw new Error(`분류 조회 실패: ${error.message}`);
@@ -167,14 +189,29 @@ export async function getClassifications(): Promise<PaymentClassificationRow[]> 
   }));
 }
 
-export async function getUnclassifiedPayments(): Promise<PaymentRecord[]> {
+export async function getUnclassifiedPayments(groupId?: number): Promise<PaymentRecord[]> {
   const db = getSupabase();
-  const { data: classified, error: classifiedError } = await db
-    .from("payment_classifications")
-    .select("payment_id");
-  if (classifiedError) throw new Error(`분류 조회 실패: ${classifiedError.message}`);
 
-  const classifiedIds = (classified ?? []).map((r) => r.payment_id);
+  let classifiedIds: number[] = [];
+  if (groupId != null) {
+    const { data: payments } = await db.from("payments").select("id").eq("group_id", groupId);
+    const paymentIds = (payments ?? []).map((row) => row.id);
+    if (paymentIds.length === 0) {
+      return [];
+    }
+    const { data: classified, error: classifiedError } = await db
+      .from("payment_classifications")
+      .select("payment_id")
+      .in("payment_id", paymentIds);
+    if (classifiedError) throw new Error(`분류 조회 실패: ${classifiedError.message}`);
+    classifiedIds = (classified ?? []).map((row) => row.payment_id);
+  } else {
+    const { data: classified, error: classifiedError } = await db
+      .from("payment_classifications")
+      .select("payment_id");
+    if (classifiedError) throw new Error(`분류 조회 실패: ${classifiedError.message}`);
+    classifiedIds = (classified ?? []).map((row) => row.payment_id);
+  }
 
   let query = db
     .from("payments")
@@ -182,6 +219,9 @@ export async function getUnclassifiedPayments(): Promise<PaymentRecord[]> {
     .order("transacted_at", { ascending: false })
     .order("id", { ascending: false });
 
+  if (groupId != null) {
+    query = query.eq("group_id", groupId);
+  }
   if (classifiedIds.length > 0) {
     query = query.not("id", "in", `(${classifiedIds.join(",")})`);
   }

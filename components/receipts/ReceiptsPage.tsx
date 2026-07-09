@@ -9,6 +9,7 @@ import ReceiptParsedForm from "@/components/receipts/ReceiptParsedForm";
 import ReceiptPreview from "@/components/receipts/ReceiptPreview";
 import ReceiptUploadCard from "@/components/receipts/ReceiptUploadCard";
 import { saveReceiptAction } from "@/lib/actions/receipt-actions";
+import { useAuth } from "@/components/providers/AuthProvider";
 import { matchReceiptToTransactions } from "@/lib/receipts/receipt-matching";
 import { parseReceipt } from "@/lib/receipts/receipt-parser";
 import type { ParsedReceipt, Receipt } from "@/lib/receipts/receipt-types";
@@ -35,6 +36,7 @@ export default function ReceiptsPage({
   initialTransactionId,
 }: ReceiptsPageProps) {
   const router = useRouter();
+  const { canEdit } = useAuth();
   const transactions = initialTransactions;
   const [receipts, setReceipts] = useState(initialReceipts);
   const lockedTransactionId = initialTransactionId;
@@ -176,6 +178,7 @@ export default function ReceiptsPage({
       )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
+        {canEdit ? (
         <div className="space-y-6">
           <ReceiptUploadCard onFileSelected={handleFileSelected} />
           {file && <ReceiptPreview file={file} onRemove={resetForm} />}
@@ -190,9 +193,14 @@ export default function ReceiptsPage({
             </Button>
           )}
         </div>
+        ) : (
+          <div className="rounded-2xl border border-hairline bg-surface/50 px-4 py-6 text-[14px] text-muted">
+            멤버 계정은 영수증 업로드 및 연결을 할 수 없습니다.
+          </div>
+        )}
 
         <div className="space-y-6">
-          {parsed && (
+          {parsed && canEdit && (
             <>
               <ReceiptParsedForm parsed={parsed} onChange={setParsed} />
 

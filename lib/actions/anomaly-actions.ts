@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { setReviewStatus } from "@/lib/review-repository";
 import { recordAiReviewHistory } from "@/lib/budget-repository";
+import { requireAccountantSession } from "@/lib/auth-server";
 import { transactionIdToPaymentId } from "@/lib/payment-types";
 
 function requirePaymentId(transactionId: string): number {
@@ -26,14 +27,16 @@ export async function approveAnomalyAction(
   merchant?: string,
   category?: string
 ): Promise<void> {
+  const session = requireAccountantSession();
   await setReviewStatus(requirePaymentId(transactionId), "approved");
   if (merchant) {
-    await recordAiReviewHistory(category ?? "기타", `${merchant} — 검토 승인 완료`);
+    await recordAiReviewHistory(session.groupId, category ?? "기타", `${merchant} — 검토 승인 완료`);
   }
   revalidateAuditPaths();
 }
 
 export async function deferAnomalyAction(transactionId: string): Promise<void> {
+  requireAccountantSession();
   await setReviewStatus(requirePaymentId(transactionId), "deferred");
   revalidateAuditPaths();
 }
@@ -43,12 +46,16 @@ export async function requestCoApprovalAction(
   merchant?: string,
   category?: string
 ): Promise<void> {
-  // 공동 승인 요청도 검토 완료로 처리한다 (승인 대기 큐에서 제거 + 예산에 반영).
+  const session = requireAccountantSession();
   await setReviewStatus(requirePaymentId(transactionId), "approved", {
     note: "공동 승인 요청됨",
   });
   if (merchant) {
-    await recordAiReviewHistory(category ?? "기타", `${merchant} — 공동 승인 요청 완료`);
+    await recordAiReviewHistory(
+      session.groupId,
+      category ?? "기타",
+      `${merchant} — 공동 승인 요청 완료`
+    );
   }
   revalidateAuditPaths();
 }
@@ -57,6 +64,7 @@ export async function recordExceptionAction(
   transactionId: string,
   note?: string
 ): Promise<void> {
+  requireAccountantSession();
   await setReviewStatus(requirePaymentId(transactionId), "exception", { note });
   revalidateAuditPaths();
 }

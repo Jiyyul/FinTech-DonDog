@@ -1,7 +1,9 @@
 import ReceiptsPage from "@/components/receipts/ReceiptsPage";
+import { getServerSession } from "@/lib/auth-server";
 import { getDashboardData } from "@/lib/get-dashboard-data";
 import { getReceipts } from "@/lib/receipt-repository";
 import { toRuleEngineTransactions } from "@/lib/anomalies/from-payments";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +12,14 @@ export default async function Page({
 }: {
   searchParams: { transactionId?: string };
 }) {
-  const [dashboardData, receipts] = await Promise.all([getDashboardData(), getReceipts()]);
+  const session = getServerSession();
+  if (!session) redirect("/login");
+  if (session.role === "member") redirect("/dashboard");
+
+  const [dashboardData, receipts] = await Promise.all([
+    getDashboardData(session.groupId),
+    getReceipts(session.groupId),
+  ]);
   const transactions = toRuleEngineTransactions(dashboardData.allTransactions);
   return (
     <ReceiptsPage

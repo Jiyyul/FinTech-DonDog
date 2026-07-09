@@ -5,6 +5,7 @@ import { convertReceiptToPayment, saveReceipt, updateReceipt } from "@/lib/recei
 import { updatePayment } from "@/lib/payment-repository";
 import { transactionIdToPaymentId } from "@/lib/payment-types";
 import { updateTransactionCategoryAction } from "@/lib/actions/classification-actions";
+import { requireAccountantSession } from "@/lib/auth-server";
 import type { ParsedReceipt, Receipt } from "@/lib/receipts/receipt-types";
 import type { BudgetCategory } from "@/lib/dashboard-types";
 
@@ -22,7 +23,8 @@ export async function saveReceiptAction(
   linkedTransactionId: string | null,
   imageDataUrl?: string | null
 ): Promise<Receipt> {
-  const receipt = await saveReceipt({
+  const session = requireAccountantSession();
+  const receipt = await saveReceipt(session.groupId, {
     ...parsed,
     fileName: file.name,
     fileType: file.type,
@@ -38,12 +40,14 @@ export async function updateReceiptAction(
   receiptId: string,
   patch: { merchant?: string; purchasedAt?: string; totalAmount?: number }
 ): Promise<Receipt> {
+  requireAccountantSession();
   const receipt = await updateReceipt(receiptId, patch);
   revalidateReceiptPaths();
   return receipt;
 }
 
 export async function convertReceiptToPaymentAction(receiptId: string): Promise<Receipt> {
+  requireAccountantSession();
   const receipt = await convertReceiptToPayment(receiptId);
   revalidateReceiptPaths();
   return receipt;
