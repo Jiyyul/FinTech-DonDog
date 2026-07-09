@@ -1,18 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Paperclip, X } from "lucide-react";
 import Card from "@/components/common/Card";
 import StatusBadge from "@/components/common/StatusBadge";
 import { useDashboardData } from "@/components/providers/DashboardDataProvider";
 import { formatCurrency } from "@/lib/format";
+import { matchesSearch } from "@/lib/search-utils";
 import type { DashboardTransaction } from "@/lib/dashboard-types";
 
 type RecentTransactionsProps = {
   transactions: DashboardTransaction[];
+  searchQuery?: string;
   onSelect: (transaction: DashboardTransaction) => void;
   onAddReceipt: (transaction: DashboardTransaction) => void;
-  canAddReceipt?: boolean;
+  onViewReceipt: (transaction: DashboardTransaction) => void;
   className?: string;
 };
 
@@ -20,12 +22,12 @@ function TransactionsTable({
   rows,
   onSelect,
   onAddReceipt,
-  canAddReceipt = true,
+  onViewReceipt,
 }: {
   rows: DashboardTransaction[];
   onSelect: (transaction: DashboardTransaction) => void;
   onAddReceipt: (transaction: DashboardTransaction) => void;
-  canAddReceipt?: boolean;
+  onViewReceipt: (transaction: DashboardTransaction) => void;
 }) {
   return (
     <table className="w-full table-fixed border-separate border-spacing-0">
@@ -56,25 +58,25 @@ function TransactionsTable({
               <StatusBadge status={tx.status} />
             </td>
             <td className="text-right">
-              {canAddReceipt ? (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (tx.hasReceipt) {
+                    onViewReceipt(tx);
+                  } else {
                     onAddReceipt(tx);
-                  }}
-                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all duration-200 ${
-                    tx.hasReceipt
-                      ? "bg-success/10 text-success"
-                      : "bg-surface text-ink2 hover:ring-1 hover:ring-hairline hover:text-ink"
-                  }`}
-                >
-                  <Paperclip size={11} strokeWidth={1.75} />
-                  {tx.hasReceipt ? "첨부됨" : "영수증 추가"}
-                </button>
-              ) : (
-                <span className="text-[11px] text-muted">{tx.hasReceipt ? "첨부됨" : "-"}</span>
-              )}
+                  }
+                }}
+                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all duration-200 ${
+                  tx.hasReceipt
+                    ? "bg-success/10 text-success"
+                    : "bg-surface text-ink2 hover:ring-1 hover:ring-hairline hover:text-ink"
+                }`}
+              >
+                <Paperclip size={11} strokeWidth={1.75} />
+                {tx.hasReceipt ? "첨부됨" : "영수증 추가"}
+              </button>
             </td>
           </tr>
         ))}
@@ -85,13 +87,19 @@ function TransactionsTable({
 
 export default function RecentTransactions({
   transactions,
+  searchQuery = "",
   onSelect,
   onAddReceipt,
-  canAddReceipt = true,
+  onViewReceipt,
   className = "",
 }: RecentTransactionsProps) {
   const { allTransactions } = useDashboardData();
   const [viewAllOpen, setViewAllOpen] = useState(false);
+
+  const allTransactionRows = useMemo(() => {
+    if (!searchQuery.trim()) return allTransactions;
+    return allTransactions.filter((tx) => matchesSearch(tx, searchQuery));
+  }, [allTransactions, searchQuery]);
 
   useEffect(() => {
     if (viewAllOpen) {
@@ -128,7 +136,7 @@ export default function RecentTransactions({
             rows={transactions}
             onSelect={onSelect}
             onAddReceipt={onAddReceipt}
-            canAddReceipt={canAddReceipt}
+            onViewReceipt={onViewReceipt}
           />
         </div>
       </Card>
@@ -164,7 +172,7 @@ export default function RecentTransactions({
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
               <TransactionsTable
-                rows={allTransactions}
+                rows={allTransactionRows}
                 onSelect={(tx) => {
                   setViewAllOpen(false);
                   onSelect(tx);
@@ -173,7 +181,10 @@ export default function RecentTransactions({
                   setViewAllOpen(false);
                   onAddReceipt(tx);
                 }}
-                canAddReceipt={canAddReceipt}
+                onViewReceipt={(tx) => {
+                  setViewAllOpen(false);
+                  onViewReceipt(tx);
+                }}
               />
             </div>
           </div>

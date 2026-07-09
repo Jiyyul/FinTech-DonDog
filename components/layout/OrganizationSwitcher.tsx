@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Building2, ChevronDown, Check } from "lucide-react";
 import type { Organization } from "@/lib/mock-data";
-import { CURRENT_ORGANIZATION } from "@/lib/mock-data";
 
 type OrganizationSwitcherProps = {
   organizations: Organization[];
@@ -11,10 +10,24 @@ type OrganizationSwitcherProps = {
 
 export default function OrganizationSwitcher({ organizations }: OrganizationSwitcherProps) {
   const [open, setOpen] = useState(false);
-  const [selectedId, setSelectedId] = useState(CURRENT_ORGANIZATION.id);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const selected =
-    organizations.find((org) => org.id === selectedId) ?? organizations[0] ?? CURRENT_ORGANIZATION;
+    organizations.find((org) => org.id === selectedId) ?? organizations[0] ?? null;
+
+  if (organizations.length === 0) {
+    return (
+      <div className="org-switcher-btn flex w-full items-center gap-2.5 rounded-xl px-1.5 py-2">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface ring-1 ring-hairline">
+          <Building2 size={16} className="text-muted" strokeWidth={1.5} />
+        </div>
+        <div className="sidebar-label min-w-0 flex-1">
+          <p className="truncate text-[13px] font-medium text-muted">모임 없음</p>
+          <p className="truncate text-[11px] text-muted">새 모임을 만들어보세요</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative">
@@ -29,8 +42,8 @@ export default function OrganizationSwitcher({ organizations }: OrganizationSwit
           <Building2 size={16} className="text-ink2" strokeWidth={1.5} />
         </div>
         <div className="sidebar-label min-w-0 flex-1">
-          <p className="truncate text-[13px] font-medium text-ink">{selected.name}</p>
-          <p className="truncate text-[11px] text-muted">{selected.semester}</p>
+          <p className="truncate text-[13px] font-medium text-ink">{selected?.name}</p>
+          <p className="truncate text-[11px] text-muted">{selected?.semester}</p>
         </div>
         <ChevronDown
           size={14}
@@ -49,7 +62,7 @@ export default function OrganizationSwitcher({ organizations }: OrganizationSwit
             className="sidebar-label absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-hairline bg-card p-1 shadow-card-hover"
           >
             {organizations.map((org) => {
-              const isSelected = org.id === selectedId;
+              const isSelected = org.id === selected?.id;
               return (
                 <li key={org.id} role="option" aria-selected={isSelected}>
                   <button

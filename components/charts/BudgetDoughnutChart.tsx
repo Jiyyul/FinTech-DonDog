@@ -18,12 +18,14 @@ type BudgetDoughnutChartProps = {
   slices: BudgetCategorySlice[];
   centerPercent: number;
   centerLabel?: string;
-  size?: "default" | "large";
+  size?: "default" | "large" | "compact";
+  preview?: boolean;
 };
 
 const SIZE_CONFIG = {
   default: { box: 212, center: 34, inset: 10, label: 13 },
   large: { box: 244, center: 40, inset: 12, label: 14 },
+  compact: { box: 136, center: 24, inset: 6, label: 10 },
 } as const;
 
 export default function BudgetDoughnutChart({
@@ -31,6 +33,7 @@ export default function BudgetDoughnutChart({
   centerPercent,
   centerLabel = "사용 완료",
   size = "default",
+  preview = false,
 }: BudgetDoughnutChartProps) {
   const dim = SIZE_CONFIG[size];
   const data = {
@@ -40,10 +43,10 @@ export default function BudgetDoughnutChart({
         data: slices.map((s) => s.percent),
         backgroundColor: slices.map((s) => s.color),
         borderColor: CHART_UI.card,
-        borderWidth: 3,
-        borderRadius: 12,
-        spacing: 4,
-        hoverOffset: 4,
+        borderWidth: preview ? 2 : 3,
+        borderRadius: preview ? 0 : 12,
+        spacing: preview ? 0 : 4,
+        hoverOffset: preview ? 0 : 4,
         hoverBorderWidth: 0,
       },
     ],
@@ -53,11 +56,14 @@ export default function BudgetDoughnutChart({
     responsive: true,
     maintainAspectRatio: false,
     cutout: "78%",
-    animation: {
-      animateRotate: true,
-      duration: 700,
-      easing: "easeOutQuart",
-    },
+    animation: preview
+      ? false
+      : {
+          animateRotate: true,
+          duration: 700,
+          easing: "easeOutQuart",
+        },
+    devicePixelRatio: preview ? 2 : undefined,
     plugins: {
       legend: { display: false },
       tooltip: {
@@ -74,7 +80,9 @@ export default function BudgetDoughnutChart({
 
   return (
     <div
-      className="relative mx-auto overflow-visible transition-transform duration-card ease-premium hover:scale-[1.01]"
+      className={`relative mx-auto overflow-visible ${
+        preview ? "" : "transition-transform duration-card ease-premium hover:scale-[1.01]"
+      }`}
       style={{ height: dim.box, width: dim.box }}
     >
       <div

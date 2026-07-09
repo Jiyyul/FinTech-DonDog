@@ -5,7 +5,13 @@ import { getReceipts } from "@/lib/receipt-repository";
 import { toRuleEngineTransactions } from "@/lib/anomalies/from-payments";
 import { redirect } from "next/navigation";
 
-export default async function Page() {
+export const dynamic = "force-dynamic";
+
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: { transactionId?: string };
+}) {
   const session = getServerSession();
   if (!session) redirect("/login");
 
@@ -14,5 +20,11 @@ export default async function Page() {
     getReceipts(session.groupId),
   ]);
   const transactions = toRuleEngineTransactions(dashboardData.allTransactions);
-  return <ReceiptsPage initialTransactions={transactions} initialReceipts={receipts} />;
+  return (
+    <ReceiptsPage
+      initialTransactions={transactions}
+      initialReceipts={receipts}
+      initialTransactionId={searchParams.transactionId ?? null}
+    />
+  );
 }

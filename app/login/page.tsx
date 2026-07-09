@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Button from "@/components/common/Button";
+import { AUTH_INPUT_CLASS, AUTH_LABEL_CLASS } from "@/lib/auth-styles";
 
 type LoginTab = "accountant" | "member";
 
@@ -30,13 +31,13 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "???? ??????.");
+        setError(data.error ?? "로그인에 실패했습니다.");
         return;
       }
       router.push("/");
       router.refresh();
     } catch {
-      setError("??? ? ??? ??????.");
+      setError("로그인 중 오류가 발생했습니다.");
     } finally {
       setLoading(false);
     }
@@ -55,13 +56,13 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "??? ??????.");
+        setError(data.error ?? "입장에 실패했습니다.");
         return;
       }
       router.push("/");
       router.refresh();
     } catch {
-      setError("?? ? ??? ??????.");
+      setError("입장 중 오류가 발생했습니다.");
     } finally {
       setLoading(false);
     }
@@ -85,7 +86,7 @@ export default function LoginPage() {
           Don Dog
         </h1>
         <p className="mt-2 text-center text-[14px] text-muted">
-          ?? ???? ???, ??? ?? ??? ?????.
+          회계 담당자는 로그인, 부원은 입장 코드로 접속하세요.
         </p>
 
         <div className="mt-6 grid grid-cols-2 gap-2 rounded-btn bg-surface p-1 ring-1 ring-hairline">
@@ -99,7 +100,7 @@ export default function LoginPage() {
               tab === "accountant" ? "bg-card text-navy shadow-card" : "text-muted"
             }`}
           >
-            ?? ???
+            회계 담당자
           </button>
           <button
             type="button"
@@ -111,54 +112,54 @@ export default function LoginPage() {
               tab === "member" ? "bg-card text-navy shadow-card" : "text-muted"
             }`}
           >
-            ??? ??
+            동아리 부원
           </button>
         </div>
 
         {tab === "accountant" ? (
           <form onSubmit={handleAccountantLogin} className="mt-6 space-y-4">
-            <Field label="???">
+            <Field label="아이디">
               <input
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="ui-input"
+                className={AUTH_INPUT_CLASS}
                 placeholder="admin123"
                 autoComplete="username"
                 required
               />
             </Field>
-            <Field label="????">
+            <Field label="비밀번호">
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="ui-input"
-                placeholder="????"
+                className={AUTH_INPUT_CLASS}
+                placeholder="비밀번호"
                 autoComplete="current-password"
                 required
               />
             </Field>
             <Button type="submit" variant="primary" className="w-full" disabled={loading}>
-              {loading ? "??? ?..." : "???"}
+              {loading ? "로그인 중..." : "로그인"}
             </Button>
           </form>
         ) : (
           <form onSubmit={handleMemberEntry} className="mt-6 space-y-4">
-            <Field label="?? ?? (10?)">
+            <Field label="입장 코드 (10자)">
               <input
                 value={entryCode}
                 onChange={(e) => setEntryCode(e.target.value.trim())}
-                className="ui-input font-mono tracking-widest"
-                placeholder="?: 1234567890"
+                className={`${AUTH_INPUT_CLASS} font-mono tracking-widest`}
+                placeholder="예: 1234567890"
                 maxLength={10}
                 required
               />
             </Field>
             <p className="text-[12px] leading-relaxed text-muted">
-              ?? ????? ?? 10?? ??? ???? ?? ??? ??? ? ????.
+              회계 담당자에게 받은 10자리 코드를 입력하면 회계 현황을 조회할 수 있습니다.
             </p>
             <Button type="submit" variant="primary" className="w-full" disabled={loading}>
-              {loading ? "?? ?..." : "????"}
+              {loading ? "입장 중..." : "입장하기"}
             </Button>
           </form>
         )}
@@ -168,9 +169,9 @@ export default function LoginPage() {
         )}
 
         <p className="mt-6 text-center text-[13px] text-muted">
-          ?? ????????{" "}
+          회계 담당자이신가요?{" "}
           <Link href="/signup" className="font-medium text-navy underline-offset-2 hover:underline">
-            ????
+            회원가입
           </Link>
         </p>
       </div>
@@ -181,7 +182,7 @@ export default function LoginPage() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[13px] font-medium text-ink2">{label}</span>
+      <span className={`mb-1.5 block ${AUTH_LABEL_CLASS}`}>{label}</span>
       {children}
     </label>
   );

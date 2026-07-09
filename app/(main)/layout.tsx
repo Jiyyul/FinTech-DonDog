@@ -5,8 +5,10 @@ import { getServerSession } from "@/lib/auth-server";
 import { getDashboardData } from "@/lib/get-dashboard-data";
 import { redirect } from "next/navigation";
 
-// 결제/예산/이상거래 데이터는 매 요청마다 Supabase에서 새로 읽어야 한다.
-export const dynamic = "force-dynamic";
+// 레이아웃에 force-dynamic을 걸면 (main) 그룹 내 페이지 간 클라이언트 사이드 이동
+// (예: 대시보드 -> /receipts)이 RSC 요청은 성공하지만 URL/화면이 갱신되지 않는
+// 문제가 있었다. 결제/예산 등 실데이터 변경 액션은 각자 router.refresh()로 반영하므로
+// 레이아웃 레벨 force-dynamic은 사용하지 않는다.
 
 export default async function MainLayout({
   children,

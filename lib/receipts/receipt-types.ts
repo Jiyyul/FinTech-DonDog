@@ -25,6 +25,7 @@ export type Receipt = ParsedReceipt & {
   fileName: string;
   fileType: string;
   fileSize: number;
+  imageDataUrl?: string | null;
   linkedTransactionId?: string | null;
   createdAt: string;
 };

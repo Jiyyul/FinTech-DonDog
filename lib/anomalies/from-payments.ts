@@ -1,5 +1,5 @@
 import { detectAnomalies } from "@/lib/anomalies/detect-anomalies";
-import type { AnomalyResult, AnomalySeverity, AnomalyType as RuleType } from "@/lib/anomalies/anomaly-types";
+import type { AnomalyResult, AnomalyType as RuleType } from "@/lib/anomalies/anomaly-types";
 import type { GroupSettings, Schedule } from "@/lib/group/group-types";
 import type { Transaction } from "@/lib/transactions/transaction-types";
 import type {
@@ -16,12 +16,6 @@ import type {
  */
 
 const GROUP_ID = "group_001";
-
-const SEVERITY_CONFIDENCE: Record<AnomalySeverity, number> = {
-  high: 95,
-  medium: 82,
-  low: 65,
-};
 
 const RULE_TYPE_MAP: Record<RuleType, AuditAnomalyType> = {
   BUDGET_EXCEEDED: "rule_violation",
@@ -103,7 +97,6 @@ export function toAuditAnomalyQueue(
       type: RULE_TYPE_MAP[result.type],
       transaction,
       reason: result.description,
-      confidence: SEVERITY_CONFIDENCE[result.severity],
       ruleReference: result.title,
     });
   });

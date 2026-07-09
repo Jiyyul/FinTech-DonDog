@@ -50,7 +50,8 @@ export async function getBudgetCategories(groupId: number): Promise<Record<strin
   const { data, error } = await db
     .from("budget_categories")
     .select("category, budget_amount")
-    .eq("group_id", groupId);
+    .eq("group_id", groupId)
+    .order("category", { ascending: true });
   if (error) throw new Error(`카테고리 예산 조회 실패: ${error.message}`);
 
   const map: Record<string, number> = {};

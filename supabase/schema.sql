@@ -74,10 +74,12 @@ create table if not exists receipts (
   file_name text,
   file_type text,
   file_size integer,
+  image_data_url text,
   linked_payment_id bigint references payments (id) on delete set null,
   created_at timestamptz not null default now()
 );
 create index if not exists idx_receipts_group_id on receipts (group_id);
+alter table receipts add column if not exists image_data_url text;
 
 create table if not exists budget_total (
   group_id bigint primary key references groups (id) on delete cascade,
@@ -103,6 +105,17 @@ create table if not exists budget_history (
   label text
 );
 create index if not exists idx_budget_history_group_id on budget_history (group_id, occurred_at desc);
+
+alter table payments disable row level security;
+alter table payment_classifications disable row level security;
+alter table transaction_reviews disable row level security;
+alter table schedules disable row level security;
+alter table receipts disable row level security;
+alter table budget_categories disable row level security;
+alter table budget_total disable row level security;
+alter table budget_history disable row level security;
+alter table groups disable row level security;
+alter table accountants disable row level security;
 
 grant usage on schema public to anon, authenticated;
 grant select, insert, update, delete on all tables in schema public to anon, authenticated;

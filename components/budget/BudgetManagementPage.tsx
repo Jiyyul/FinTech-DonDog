@@ -8,7 +8,7 @@ import Card from "@/components/common/Card";
 import Button from "@/components/common/Button";
 import type { BudgetCategory } from "@/lib/dashboard-types";
 import { formatCurrency } from "@/lib/format";
-import { updateTotalBudgetAction } from "@/lib/actions/budget-actions";
+import { updateCategoryBudgetAction, updateTotalBudgetAction } from "@/lib/actions/budget-actions";
 import { useAuth } from "@/components/providers/AuthProvider";
 import type { BudgetPageData } from "@/lib/get-budget-data";
 
@@ -25,6 +25,10 @@ export default function BudgetManagementPage({ data }: { data: BudgetPageData })
   const [totalBudgetInput, setTotalBudgetInput] = useState(String(totalBudget));
   const [saving, setSaving] = useState(false);
   const [trendFilter, setTrendFilter] = useState<TrendFilter>("전체");
+  const [categoryInputs, setCategoryInputs] = useState<Record<string, string>>(() =>
+    Object.fromEntries(categories.map((c) => [c.category, String(c.budget)]))
+  );
+  const [savingCategory, setSavingCategory] = useState<BudgetCategory | null>(null);
 
   const trendData = monthlyByCategory[trendFilter] ?? monthlyByCategory.전체 ?? [];
   const trendMax = Math.max(1, ...trendData);
@@ -38,6 +42,19 @@ export default function BudgetManagementPage({ data }: { data: BudgetPageData })
       router.refresh();
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleCategoryBudgetSave = async (category: BudgetCategory) => {
+    const next = Number(categoryInputs[category]);
+    const current = categories.find((c) => c.category === category)?.budget ?? 0;
+    if (!Number.isFinite(next) || next < 0 || next === current) return;
+    setSavingCategory(category);
+    try {
+      await updateCategoryBudgetAction(category, next);
+      router.refresh();
+    } finally {
+      setSavingCategory(null);
     }
   };
 
@@ -91,6 +108,25 @@ export default function BudgetManagementPage({ data }: { data: BudgetPageData })
                 highlight
               />
             </dl>
+            <div className="mt-3 flex items-end gap-2">
+              <input
+                type="number"
+                value={categoryInputs[item.category] ?? String(item.budget)}
+                onChange={(e) =>
+                  setCategoryInputs((prev) => ({ ...prev, [item.category]: e.target.value }))
+                }
+                className={`flex-1 ${inputClass}`}
+                min={0}
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => handleCategoryBudgetSave(item.category)}
+                disabled={savingCategory === item.category}
+              >
+                {savingCategory === item.category ? "저장 중..." : "예산 저장"}
+              </Button>
+            </div>
           </Card>
         ))}
       </div>
