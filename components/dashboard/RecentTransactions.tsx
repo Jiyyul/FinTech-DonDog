@@ -1,22 +1,36 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Paperclip, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowRight, Paperclip, Plus, X } from "lucide-react";
 import Card from "@/components/common/Card";
 import StatusBadge from "@/components/common/StatusBadge";
-import { useDashboardData } from "@/components/providers/DashboardDataProvider";
+import AddTransactionModal from "@/components/dashboard/AddTransactionModal";
 import { formatCurrency } from "@/lib/format";
-import { matchesSearch } from "@/lib/search-utils";
 import type { DashboardTransaction } from "@/lib/dashboard-types";
+import type { ManualTransactionInput } from "@/lib/transaction-utils";
 
 type RecentTransactionsProps = {
   transactions: DashboardTransaction[];
-  searchQuery?: string;
+  allTransactions: DashboardTransaction[];
   onSelect: (transaction: DashboardTransaction) => void;
   onAddReceipt: (transaction: DashboardTransaction) => void;
   onViewReceipt: (transaction: DashboardTransaction) => void;
+  onAddTransaction: (input: ManualTransactionInput) => void | Promise<void>;
   className?: string;
 };
+
+function AddTransactionButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1.5 rounded-full bg-[#0A1680] px-5 py-2.5 text-[13px] font-semibold text-inverse shadow-[0_2px_8px_rgba(10,22,128,0.18)] transition-all duration-200 ease-premium hover:bg-brand-hover hover:shadow-[0_4px_14px_rgba(10,22,128,0.26)] active:scale-[0.98]"
+    >
+      <Plus size={16} strokeWidth={2} />
+      거래내역 추가하기
+    </button>
+  );
+}
 
 function TransactionsTable({
   rows,
@@ -87,22 +101,18 @@ function TransactionsTable({
 
 export default function RecentTransactions({
   transactions,
-  searchQuery = "",
+  allTransactions,
   onSelect,
   onAddReceipt,
   onViewReceipt,
+  onAddTransaction,
   className = "",
 }: RecentTransactionsProps) {
-  const { allTransactions } = useDashboardData();
   const [viewAllOpen, setViewAllOpen] = useState(false);
-
-  const allTransactionRows = useMemo(() => {
-    if (!searchQuery.trim()) return allTransactions;
-    return allTransactions.filter((tx) => matchesSearch(tx, searchQuery));
-  }, [allTransactions, searchQuery]);
+  const [addModalOpen, setAddModalOpen] = useState(false);
 
   useEffect(() => {
-    if (viewAllOpen) {
+    if (viewAllOpen || addModalOpen) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
@@ -110,7 +120,7 @@ export default function RecentTransactions({
     return () => {
       document.body.style.overflow = "";
     };
-  }, [viewAllOpen]);
+  }, [viewAllOpen, addModalOpen]);
 
   return (
     <>
@@ -139,7 +149,17 @@ export default function RecentTransactions({
             onViewReceipt={onViewReceipt}
           />
         </div>
+
+        <div className="mt-5 flex shrink-0 justify-end border-t border-hairline pt-4">
+          <AddTransactionButton onClick={() => setAddModalOpen(true)} />
+        </div>
       </Card>
+
+      <AddTransactionModal
+        open={addModalOpen}
+        onClose={() => setAddModalOpen(false)}
+        onSubmit={onAddTransaction}
+      />
 
       {viewAllOpen && (
         <>
@@ -172,7 +192,7 @@ export default function RecentTransactions({
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
               <TransactionsTable
-                rows={allTransactionRows}
+                rows={allTransactions}
                 onSelect={(tx) => {
                   setViewAllOpen(false);
                   onSelect(tx);
@@ -184,6 +204,14 @@ export default function RecentTransactions({
                 onViewReceipt={(tx) => {
                   setViewAllOpen(false);
                   onViewReceipt(tx);
+                }}
+              />
+            </div>
+            <div className="flex shrink-0 justify-end border-t border-hairline px-6 py-4">
+              <AddTransactionButton
+                onClick={() => {
+                  setViewAllOpen(false);
+                  setAddModalOpen(true);
                 }}
               />
             </div>

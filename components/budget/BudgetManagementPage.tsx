@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight } from "lucide-react";
@@ -11,25 +11,19 @@ import { formatCurrency } from "@/lib/format";
 import { updateCategoryBudgetAction, updateTotalBudgetAction } from "@/lib/actions/budget-actions";
 import type { BudgetPageData } from "@/lib/get-budget-data";
 
-type TrendFilter = "전체" | BudgetCategory;
-
 const inputClass =
   "h-12 w-full rounded-btn border border-hairline bg-card px-4 text-[14px] outline-none transition-colors focus:border-brand focus:shadow-[0_0_0_3px_rgba(10,22,128,0.12)]";
 
 export default function BudgetManagementPage({ data }: { data: BudgetPageData }) {
   const router = useRouter();
-  const { totalBudget, totalUsed, categories, history, months, monthlyByCategory } = data;
+  const { totalBudget, totalUsed, categories, history } = data;
 
   const [totalBudgetInput, setTotalBudgetInput] = useState(String(totalBudget));
   const [saving, setSaving] = useState(false);
-  const [trendFilter, setTrendFilter] = useState<TrendFilter>("전체");
   const [categoryInputs, setCategoryInputs] = useState<Record<string, string>>(() =>
     Object.fromEntries(categories.map((c) => [c.category, String(c.budget)]))
   );
   const [savingCategory, setSavingCategory] = useState<BudgetCategory | null>(null);
-
-  const trendData = monthlyByCategory[trendFilter] ?? monthlyByCategory.전체 ?? [];
-  const trendMax = Math.max(1, ...trendData);
 
   const handleTotalBudgetSave = async () => {
     const next = Number(totalBudgetInput);
@@ -162,61 +156,6 @@ export default function BudgetManagementPage({ data }: { data: BudgetPageData })
               </li>
             ))}
           </ul>
-        )}
-      </Card>
-
-      <div className="my-8 border-t border-hairline" />
-
-      <Card>
-        <h2 className="mb-4 text-[16px] font-semibold text-navy">월별 사용 추이</h2>
-        {months.length === 0 ? (
-          <p className="text-[14px] text-muted">표시할 거래 내역이 없습니다.</p>
-        ) : (
-          <>
-            <div className="mb-5 flex flex-wrap gap-2">
-              {(["전체", ...categories.map((c) => c.category)] as TrendFilter[]).map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setTrendFilter(cat)}
-                  className={`rounded-full px-3 py-1.5 text-[12px] font-medium transition-all duration-200 ${
-                    trendFilter === cat
-                      ? "bg-navy text-inverse"
-                      : "bg-surface text-ink2 ring-1 ring-hairline hover:text-ink"
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-            <ul className="space-y-3">
-              {months.map((month, index) => {
-                const value = trendData[index] ?? 0;
-                const width = trendMax > 0 ? Math.round((value / trendMax) * 100) : 0;
-                const color =
-                  trendFilter === "전체"
-                    ? "#0A1680"
-                    : categories.find((c) => c.category === trendFilter)?.color ?? "#0A1680";
-
-                return (
-                  <li key={month} className="flex items-center gap-3">
-                    <span className="w-8 shrink-0 text-[13px] font-medium text-ink2">{month}</span>
-                    <div className="flex min-w-0 flex-1 items-center gap-2">
-                      <div className="h-3 flex-1 overflow-hidden rounded-full bg-surface">
-                        <div
-                          className="h-full rounded-full transition-all duration-300"
-                          style={{ width: `${width}%`, backgroundColor: color }}
-                        />
-                      </div>
-                      <span className="w-16 shrink-0 text-right text-[12px] tabular-nums text-muted">
-                        {formatCurrency(value * 10_000)}
-                      </span>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </>
         )}
       </Card>
     </div>
