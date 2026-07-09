@@ -20,7 +20,6 @@ export type AnomalyType =
 
 export type DashboardTransaction = {
   id: string;
-  paymentId: number;
   merchant: string;
   category: BudgetCategory;
   date: string;
@@ -44,7 +43,6 @@ export type AuditAnomaly = {
   relatedScheduleId?: string;
   ruleReference?: string;
   deferred?: boolean;
-  coApprovalPending?: boolean;
 };
 
 export type CalendarEvent = {
@@ -57,19 +55,7 @@ export type CalendarEvent = {
   description?: string;
 };
 
-export type PaymentCalendarItem = {
-  id: string;
-  paymentId: number;
-  merchant: string;
-  amount: number;
-  category: BudgetCategory;
-  date: number;
-  month: number;
-  year: number;
-  dateLabel: string;
-};
-
-export type ActivityIcon = "dog" | "bell" | "check";
+export type ActivityIcon = "check" | "calendar" | "clock" | "user" | "file";
 
 export type ActivityItem = {
   id: string;
@@ -110,6 +96,6 @@ export const ANOMALY_TYPE_LABELS: Record<AnomalyType, string> = {
   amount_threshold: "고액 결제",
   low_confidence: "카테고리 확인 필요",
   rule_violation: "회칙 위반 가능",
-  duplicate_payment: "중복 의심",
+  duplicate_payment: "중복 결제",
   receipt_required: "영수증 필요",
 };

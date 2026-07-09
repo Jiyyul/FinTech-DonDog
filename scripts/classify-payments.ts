@@ -1,7 +1,12 @@
-import { existsSync, readFileSync } from "fs";
+import { readFileSync, existsSync, writeFileSync } from "fs";
 import { join } from "path";
-import { closeDb } from "../lib/db";
-import { runPaymentClassification } from "../lib/run-payment-classification";
+import { getDemoGroupId } from "../lib/auth-repository";
+import { classifyPaymentsWithOpenAI } from "../lib/openai-classify";
+import {
+  getPaymentCount,
+  getUnclassifiedPayments,
+  saveClassifications,
+} from "../lib/payment-repository";
 
 const root = process.cwd();
 
@@ -32,19 +37,59 @@ async function main() {
     process.exit(1);
   }
 
-  const result = await runPaymentClassification({ apiKey, rootDir: root });
-  console.log(result.message);
+  const demoGroupId = await getDemoGroupId();
 
-  if (result.ran) {
-    console.log("개발 서버를 새로고침하면 대시보드에 반영됩니다.");
+  if ((await getPaymentCount(demoGroupId)) === 0) {
+    console.error("데모 그룹 결제 데이터가 없습니다. 먼저 npm run db:seed 를 실행하세요.");
+    process.exit(1);
   }
+
+  const unclassified = await getUnclassifiedPayments(demoGroupId);
+  if (unclassified.length === 0) {
+    console.log("분류할 결제가 없습니다. 모든 건이 이미 분류되어 있습니다.");
+    return;
+  }
+
+  console.log(`OpenAI로 ${unclassified.length}건 분류 중... (gpt-4o-mini)`);
+
+  const batchSize = 25;
+  for (let i = 0; i < unclassified.length; i += batchSize) {
+    const batch = unclassified.slice(i, i + batchSize);
+    const results = await classifyPaymentsWithOpenAI(
+      batch.map((payment) => ({
+        paymentId: payment.id,
+        merchant: payment.merchant,
+        transactedAt: payment.transactedAt,
+      })),
+      apiKey
+    );
+
+    await saveClassifications(
+      results.map((item) => ({
+        paymentId: item.paymentId,
+        category: item.category,
+        confidence: item.confidence,
+        source: item.source,
+      }))
+    );
+
+    for (const item of results) {
+      console.log(`  ${item.merchant} → ${item.category} (${item.confidence}%)`);
+    }
+  }
+
+  const versionPath = join(root, "lib", "classification-version.ts");
+  writeFileSync(
+    versionPath,
+    `/** \`npm run classify\` 실행 시 자동 갱신됩니다. */\nexport const CLASSIFICATION_VERSION = "${new Date().toISOString()}";\n`,
+    "utf-8"
+  );
+
+  console.log(`\nDB 저장 완료: Supabase payment_classifications 테이블`);
+  console.log("개발 서버를 새로고침하면 대시보드에 반영됩니다.");
 }
 
-main()
-  .catch((err) => {
-    console.error(err);
-    process.exit(1);
-  })
-  .finally(() => {
-    closeDb();
-  });
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

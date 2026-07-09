@@ -12,6 +12,7 @@ type RecentTransactionsProps = {
   transactions: DashboardTransaction[];
   onSelect: (transaction: DashboardTransaction) => void;
   onAddReceipt: (transaction: DashboardTransaction) => void;
+  canAddReceipt?: boolean;
   className?: string;
 };
 
@@ -19,10 +20,12 @@ function TransactionsTable({
   rows,
   onSelect,
   onAddReceipt,
+  canAddReceipt = true,
 }: {
   rows: DashboardTransaction[];
   onSelect: (transaction: DashboardTransaction) => void;
   onAddReceipt: (transaction: DashboardTransaction) => void;
+  canAddReceipt?: boolean;
 }) {
   return (
     <table className="w-full table-fixed border-separate border-spacing-0">
@@ -53,21 +56,25 @@ function TransactionsTable({
               <StatusBadge status={tx.status} />
             </td>
             <td className="text-right">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onAddReceipt(tx);
-                }}
-                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all duration-200 ${
-                  tx.hasReceipt
-                    ? "bg-success/10 text-success"
-                    : "bg-surface text-ink2 hover:ring-1 hover:ring-hairline hover:text-ink"
-                }`}
-              >
-                <Paperclip size={11} strokeWidth={1.75} />
-                {tx.hasReceipt ? "첨부됨" : "영수증 추가"}
-              </button>
+              {canAddReceipt ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAddReceipt(tx);
+                  }}
+                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all duration-200 ${
+                    tx.hasReceipt
+                      ? "bg-success/10 text-success"
+                      : "bg-surface text-ink2 hover:ring-1 hover:ring-hairline hover:text-ink"
+                  }`}
+                >
+                  <Paperclip size={11} strokeWidth={1.75} />
+                  {tx.hasReceipt ? "첨부됨" : "영수증 추가"}
+                </button>
+              ) : (
+                <span className="text-[11px] text-muted">{tx.hasReceipt ? "첨부됨" : "-"}</span>
+              )}
             </td>
           </tr>
         ))}
@@ -80,6 +87,7 @@ export default function RecentTransactions({
   transactions,
   onSelect,
   onAddReceipt,
+  canAddReceipt = true,
   className = "",
 }: RecentTransactionsProps) {
   const { allTransactions } = useDashboardData();
@@ -120,6 +128,7 @@ export default function RecentTransactions({
             rows={transactions}
             onSelect={onSelect}
             onAddReceipt={onAddReceipt}
+            canAddReceipt={canAddReceipt}
           />
         </div>
       </Card>
@@ -164,6 +173,7 @@ export default function RecentTransactions({
                   setViewAllOpen(false);
                   onAddReceipt(tx);
                 }}
+                canAddReceipt={canAddReceipt}
               />
             </div>
           </div>

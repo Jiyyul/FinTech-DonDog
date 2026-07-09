@@ -14,9 +14,6 @@ export type PaymentSeedRow = {
   amount: number;
   transacted_at: string;
   payment_method?: string;
-  /** 테스트용: AI 분류 결과를 시드 시 직접 넣을 때 사용 */
-  category?: BudgetCategory;
-  confidence?: number;
 };
 
 export type PaymentClassificationRow = {
@@ -26,3 +23,13 @@ export type PaymentClassificationRow = {
   confidence: number;
   source: string;
 };
+
+/** DashboardTransaction/Transaction id(`tx-001`)와 실제 payments.id(숫자) 사이의 변환. */
+export function paymentIdToTransactionId(id: number): string {
+  return `tx-${String(id).padStart(3, "0")}`;
+}
+
+export function transactionIdToPaymentId(transactionId: string): number | null {
+  const match = /^tx-(\d+)$/.exec(transactionId);
+  return match ? Number(match[1]) : null;
+}

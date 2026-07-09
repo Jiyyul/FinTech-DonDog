@@ -1,5 +1,6 @@
 import { writeFileSync } from "fs";
 import { join } from "path";
+import { getDemoGroupId } from "@/lib/auth-repository";
 import { classifyPaymentsWithOpenAI } from "@/lib/openai-classify";
 import {
   getPaymentCount,
@@ -19,11 +20,13 @@ export async function runPaymentClassification(options: {
   apiKey: string;
   rootDir?: string;
   log?: (line: string) => void;
+  groupId?: number;
 }): Promise<ClassificationRunResult> {
   const log = options.log ?? console.log;
   const root = options.rootDir ?? process.cwd();
+  const groupId = options.groupId ?? (await getDemoGroupId());
 
-  if (getPaymentCount() === 0) {
+  if ((await getPaymentCount(groupId)) === 0) {
     return {
       ran: false,
       classifiedCount: 0,
@@ -31,7 +34,7 @@ export async function runPaymentClassification(options: {
     };
   }
 
-  const unclassified = getUnclassifiedPayments();
+  const unclassified = await getUnclassifiedPayments(groupId);
   if (unclassified.length === 0) {
     return {
       ran: false,
@@ -54,7 +57,7 @@ export async function runPaymentClassification(options: {
       options.apiKey
     );
 
-    saveClassifications(
+    await saveClassifications(
       results.map((item) => ({
         paymentId: item.paymentId,
         category: item.category,

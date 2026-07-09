@@ -28,33 +28,20 @@ export const BUDGET_SLICES: BudgetCategorySlice[] = [
 
 export const DOUGHNUT_CENTER_PERCENT = 74;
 
-function mockTx(
-  tx: Omit<DashboardTransaction, "paymentId" | "balance"> & {
-    paymentId?: number;
-    balance?: number;
-  }
-): DashboardTransaction {
-  const paymentId = tx.paymentId ?? Number.parseInt(tx.id.replace("tx-", ""), 10);
-  return {
-    ...tx,
-    paymentId,
-    balance: tx.balance ?? 1_000_000 - paymentId * 10_000,
-  };
-}
-
-const MT_TRANSACTION = mockTx({
+const MT_TRANSACTION: DashboardTransaction = {
   id: "tx-001",
   merchant: "학생 MT 펜션",
   category: "행사비",
   date: "2026-07-02",
   dateLabel: "7월 2일",
   amount: 850_000,
+  balance: 0,
   status: "review",
   paymentMethod: "학생회 체크카드",
   transactionId: "TX-20260702-001",
   hasReceipt: false,
   aiConfidence: 97,
-});
+};
 
 export const PENDING_AUDIT_TRANSACTION = MT_TRANSACTION;
 
@@ -80,36 +67,38 @@ export const ANOMALY_QUEUE: AuditAnomaly[] = [
   {
     id: "anomaly-3",
     type: "low_confidence",
-    transaction: mockTx({
+    transaction: {
       id: "tx-005",
       merchant: "편의점 CU",
       category: "기타",
       date: "2026-07-04",
       dateLabel: "7월 4일",
       amount: 28_500,
+      balance: 0,
       status: "review",
       paymentMethod: "학생회 체크카드",
       transactionId: "TX-20260704-001",
       aiConfidence: 72,
-    }),
+    },
     reason: "AI 분류 신뢰도가 80% 이하입니다. 카테고리를 확인해 주세요.",
     confidence: 72,
   },
   {
     id: "anomaly-4",
     type: "rule_violation",
-    transaction: mockTx({
+    transaction: {
       id: "tx-006",
       merchant: "한식당 모임",
       category: "식비",
       date: "2026-07-01",
       dateLabel: "7월 1일",
       amount: 180_000,
+      balance: 0,
       status: "review",
       paymentMethod: "학생회 체크카드",
       transactionId: "TX-20260701-001",
       aiConfidence: 88,
-    }),
+    },
     reason: "회칙상 식비 1인당 20,000원 한도를 초과했을 가능성이 있습니다. (1인당 약 45,000원)",
     confidence: 88,
     ruleReference: "식비 1인당 20,000원",
@@ -117,19 +106,20 @@ export const ANOMALY_QUEUE: AuditAnomaly[] = [
   {
     id: "anomaly-5",
     type: "duplicate_payment",
-    transaction: mockTx({
+    transaction: {
       id: "tx-007",
       merchant: "MT 펜션 예약",
       category: "행사비",
       date: "2026-07-03",
       dateLabel: "7월 3일",
       amount: 850_000,
+      balance: 0,
       status: "review",
       paymentMethod: "학생회 체크카드",
       transactionId: "TX-20260703-001",
       hasReceipt: false,
       aiConfidence: 96,
-    }),
+    },
     reason:
       "동일 가맹점·동일 금액(₩850,000) 거래가 7월 2일에 이미 처리되었습니다. 중복 결제 여부를 확인해 주세요.",
     confidence: 94,
@@ -138,114 +128,122 @@ export const ANOMALY_QUEUE: AuditAnomaly[] = [
 ];
 
 export const RECENT_TRANSACTIONS: DashboardTransaction[] = [
-  mockTx({
+  {
     id: "tx-001",
     merchant: "MT 펜션 예약",
     category: "행사비",
     date: "2026-07-02",
     dateLabel: "7월 2일",
     amount: 850_000,
+    balance: 0,
     status: "review",
     paymentMethod: "학생회 체크카드",
     transactionId: "TX-20260702-001",
     hasReceipt: false,
     aiConfidence: 97,
-  }),
-  mockTx({
+  },
+  {
     id: "tx-002",
     merchant: "김밥천국",
     category: "식비",
     date: "2026-07-03",
     dateLabel: "7월 3일",
     amount: 42_000,
+    balance: 0,
     status: "completed",
     paymentMethod: "학생회 체크카드",
     transactionId: "TX-20260703-001",
     hasReceipt: true,
     aiConfidence: 96,
-  }),
-  mockTx({
+  },
+  {
     id: "tx-003",
     merchant: "전자상가",
     category: "장비비",
     date: "2026-07-05",
     dateLabel: "7월 5일",
     amount: 120_000,
+    balance: 0,
     status: "completed",
     paymentMethod: "학생회 체크카드",
     transactionId: "TX-20260705-001",
     hasReceipt: false,
     aiConfidence: 94,
-  }),
-  mockTx({
+  },
+  {
     id: "tx-004",
     merchant: "프린트카페",
     category: "운영비",
     date: "2026-07-06",
     dateLabel: "7월 6일",
     amount: 18_000,
+    balance: 0,
     status: "completed",
     paymentMethod: "학생회 체크카드",
     transactionId: "TX-20260706-001",
     hasReceipt: true,
     aiConfidence: 98,
-  }),
+  },
 ];
 
 export const ALL_TRANSACTIONS: DashboardTransaction[] = [
   ...RECENT_TRANSACTIONS,
-  mockTx({
+  {
     id: "tx-005",
     merchant: "편의점 CU",
     category: "기타",
     date: "2026-07-04",
     dateLabel: "7월 4일",
     amount: 28_500,
+    balance: 0,
     status: "review",
     paymentMethod: "학생회 체크카드",
     transactionId: "TX-20260704-001",
     hasReceipt: false,
     aiConfidence: 72,
-  }),
-  mockTx({
+  },
+  {
     id: "tx-006",
     merchant: "한식당 모임",
     category: "식비",
     date: "2026-07-01",
     dateLabel: "7월 1일",
     amount: 180_000,
+    balance: 0,
     status: "review",
     paymentMethod: "학생회 체크카드",
     transactionId: "TX-20260701-001",
     hasReceipt: false,
     aiConfidence: 88,
-  }),
-  mockTx({
+  },
+  {
     id: "tx-007",
     merchant: "교보문고",
     category: "운영비",
     date: "2026-06-28",
     dateLabel: "6월 28일",
     amount: 65_000,
+    balance: 0,
     status: "completed",
     paymentMethod: "학생회 체크카드",
     transactionId: "TX-20260628-001",
     hasReceipt: true,
     aiConfidence: 95,
-  }),
-  mockTx({
+  },
+  {
     id: "tx-008",
     merchant: "버스 대절",
     category: "교통비",
     date: "2026-06-25",
     dateLabel: "6월 25일",
     amount: 220_000,
+    balance: 0,
     status: "completed",
     paymentMethod: "학생회 체크카드",
     transactionId: "TX-20260625-001",
     hasReceipt: true,
     aiConfidence: 93,
-  }),
+  },
 ];
 
 export const MONTHLY_BUDGET_TREND: MonthlyBudgetPoint[] = enrichTrendWithMoM([

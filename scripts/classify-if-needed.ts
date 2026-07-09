@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
-import { closeDb } from "../lib/db";
+import { getDemoGroupId } from "../lib/auth-repository";
 import { runPaymentClassification } from "../lib/run-payment-classification";
 import { getUnclassifiedPayments } from "../lib/payment-repository";
 
@@ -38,7 +38,8 @@ async function main() {
     return;
   }
 
-  const pending = getUnclassifiedPayments().length;
+  const demoGroupId = await getDemoGroupId();
+  const pending = (await getUnclassifiedPayments(demoGroupId)).length;
   if (pending === 0) {
     return;
   }
@@ -54,19 +55,11 @@ async function main() {
 
   console.log(`[auto-classify] 미분류 ${pending}건 감지 — 분류를 시작합니다.`);
 
-  const result = await runPaymentClassification({ apiKey, rootDir: root });
-  if (result.ran) {
-    console.log(`[auto-classify] ${result.message}`);
-  } else {
-    console.log(`[auto-classify] ${result.message}`);
-  }
+  const result = await runPaymentClassification({ apiKey, rootDir: root, groupId: demoGroupId });
+  console.log(`[auto-classify] ${result.message}`);
 }
 
-main()
-  .catch((err) => {
-    console.error("[auto-classify] 분류 중 오류:", err);
-    process.exit(1);
-  })
-  .finally(() => {
-    closeDb();
-  });
+main().catch((err) => {
+  console.error("[auto-classify] 분류 중 오류:", err);
+  process.exit(1);
+});

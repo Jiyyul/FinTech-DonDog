@@ -19,7 +19,9 @@ export default function BudgetTrendCard({ className = "" }: { className?: string
       </div>
 
       <AIMessage className="mt-6 shrink-0 border-t border-hairline pt-5">
-        6월 사용액 전월 대비 {formatChangeRate(latest.changeRate)} 변동했습니다.
+        {latest
+          ? `${latest.month}월 사용액 전월 대비 ${formatChangeRate(latest.changeRate)} 변동했습니다.`
+          : "거래가 등록되면 월별 예산 추이가 표시됩니다."}
       </AIMessage>
     </Card>
   );

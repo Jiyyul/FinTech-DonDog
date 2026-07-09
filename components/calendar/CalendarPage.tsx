@@ -2,27 +2,36 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import CalendarCard from "@/components/dashboard/CalendarCard";
 import ScheduleFormModal from "@/components/dashboard/ScheduleFormModal";
 import { useDashboardData } from "@/components/providers/DashboardDataProvider";
+import { deleteScheduleAction, saveScheduleAction } from "@/lib/actions/schedule-actions";
 import type { CalendarEvent } from "@/lib/dashboard-types";
 
 export default function CalendarPage() {
-  const { calendarEvents: initialEvents, paymentCalendarItems } = useDashboardData();
+  const router = useRouter();
+  const { calendarEvents: initialEvents } = useDashboardData();
   const [events, setEvents] = useState(initialEvents);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<CalendarEvent | null>(null);
 
-  const handleSave = (event: Omit<CalendarEvent, "id"> & { id?: string }) => {
-    if (event.id) {
-      setEvents((prev) =>
-        prev.map((e) => (e.id === event.id ? { ...e, ...event, id: event.id } : e))
-      );
-    } else {
-      setEvents((prev) => [...prev, { ...event, id: `ev-${Date.now()}` }]);
-    }
+  const handleSave = async (event: Omit<CalendarEvent, "id"> & { id?: string }) => {
+    const saved = await saveScheduleAction(event);
+    setEvents((prev) => {
+      const exists = prev.some((e) => e.id === saved.id);
+      return exists ? prev.map((e) => (e.id === saved.id ? saved : e)) : [...prev, saved];
+    });
     setEditing(null);
+    router.refresh();
+  };
+
+  const handleDelete = async (id: string) => {
+    setEvents((prev) => prev.filter((e) => e.id !== id));
+    setEditing(null);
+    await deleteScheduleAction(id);
+    router.refresh();
   };
 
   return (
@@ -42,7 +51,6 @@ export default function CalendarPage() {
 
       <CalendarCard
         events={events}
-        payments={paymentCalendarItems}
         onAddEvent={() => {
           setEditing(null);
           setFormOpen(true);
@@ -63,10 +71,7 @@ export default function CalendarPage() {
           setEditing(null);
         }}
         onSave={handleSave}
-        onDelete={(id) => {
-          setEvents((prev) => prev.filter((e) => e.id !== id));
-          setEditing(null);
-        }}
+        onDelete={handleDelete}
       />
     </div>
   );

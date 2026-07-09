@@ -15,6 +15,7 @@ export default function HeroBudgetCard() {
     doughnutCenterPercent,
     budgetTotal,
     budgetUsed,
+    budgetPendingUsed,
     budgetRemaining,
     budgetUsagePercent,
     budgetUsageSpeedPercent,
@@ -37,6 +38,7 @@ export default function HeroBudgetCard() {
             centerPercent={doughnutCenterPercent}
             size="large"
           />
+          {budgetSlices.length > 0 && (
           <div className="mt-5 grid w-full max-w-md grid-cols-[repeat(auto-fit,minmax(6.5rem,1fr))] gap-x-3 gap-y-2">
             {budgetSlices.map((slice) => (
               <span
@@ -53,6 +55,7 @@ export default function HeroBudgetCard() {
               </span>
             ))}
           </div>
+          )}
         </div>
 
         <div className="flex min-w-0 flex-col justify-center lg:pl-2">
@@ -82,17 +85,26 @@ export default function HeroBudgetCard() {
               <span className="dash-kpi-highlight">{budgetUsagePercent}%</span>
             </div>
             <ProgressBar value={budgetUsagePercent} className="h-3" />
-            <p className="mt-3 text-[13px] leading-relaxed text-muted">
-              이번 달 평균 대비{" "}
-              <span className="dash-kpi-warning">
-                {budgetUsageSpeedPercent}%
-              </span>{" "}
-              빠른 속도로 사용 중
-            </p>
+            {budgetUsed > 0 ? (
+              <p className="mt-3 text-[13px] leading-relaxed text-muted">
+                이번 달 평균 대비{" "}
+                <span className="dash-kpi-warning">{budgetUsageSpeedPercent}%</span> 빠른 속도로
+                사용 중
+              </p>
+            ) : (
+              <p className="mt-3 text-[13px] leading-relaxed text-muted">아직 지출 내역이 없습니다.</p>
+            )}
+            {budgetPendingUsed > 0 && (
+              <p className="mt-1.5 text-[12px] leading-relaxed text-muted">
+                검토 대기 지출 {formatCurrency(budgetPendingUsed)} — 승인 시 사용률에 반영됩니다
+              </p>
+            )}
           </div>
 
           <AIMessage className="mt-5 border-t border-hairline pt-4">
-            이번 달 행사비 비중이 높습니다.
+            {budgetUsed > 0
+              ? "이번 달 행사비 비중이 높습니다."
+              : "거래가 등록되면 카테고리별 사용 비중이 표시됩니다."}
           </AIMessage>
         </div>
       </div>

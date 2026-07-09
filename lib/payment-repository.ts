@@ -1,8 +1,7 @@
-import { getDb } from "@/lib/db";
+import { getSupabase } from "@/lib/supabase";
+import { getBudgetTotal } from "@/lib/budget-repository";
 import type { PaymentClassificationRow, PaymentRecord, PaymentSeedRow } from "@/lib/payment-types";
 import type { BudgetCategory } from "@/lib/dashboard-types";
-
-const INITIAL_ACCOUNT_BALANCE = 2_500_000;
 
 type PaymentRow = {
   id: number;
@@ -24,80 +23,81 @@ function mapPayment(row: PaymentRow): PaymentRecord {
   };
 }
 
-export function seedPaymentsFromJson(rows: PaymentSeedRow[]) {
-  const database = getDb();
-  database.exec("DELETE FROM audit_reviews; DELETE FROM payment_classifications; DELETE FROM payments;");
+export async function seedPaymentsFromJson(
+  rows: PaymentSeedRow[],
+  groupId: number
+): Promise<number> {
+  const db = getSupabase();
+  const initialBalance = await getBudgetTotal(groupId);
+
+  const { data: existingPayments } = await db
+    .from("payments")
+    .select("id")
+    .eq("group_id", groupId);
+
+  const paymentIds = (existingPayments ?? []).map((row) => row.id);
+  if (paymentIds.length > 0) {
+    await db.from("payment_classifications").delete().in("payment_id", paymentIds);
+    await db.from("transaction_reviews").delete().in("payment_id", paymentIds);
+    await db.from("payments").delete().eq("group_id", groupId);
+  }
 
   const sorted = [...rows].sort((a, b) => {
     const dateCmp = a.transacted_at.localeCompare(b.transacted_at);
     return dateCmp !== 0 ? dateCmp : a.merchant.localeCompare(b.merchant);
   });
 
-  let balance = INITIAL_ACCOUNT_BALANCE;
-  const insert = database.prepare(`
-    INSERT INTO payments (merchant, amount, balance_after, transacted_at, payment_method)
-    VALUES (@merchant, @amount, @balance_after, @transacted_at, @payment_method)
-  `);
-
-  const classify = database.prepare(`
-    INSERT INTO payment_classifications (payment_id, category, confidence, source, classified_at)
-    VALUES (@paymentId, @category, @confidence, @source, datetime('now'))
-  `);
-
-  const insertMany = database.transaction((items: PaymentSeedRow[]) => {
-    for (const item of items) {
-      balance -= item.amount;
-      const result = insert.run({
-        merchant: item.merchant,
-        amount: item.amount,
-        balance_after: balance,
-        transacted_at: item.transacted_at,
-        payment_method: item.payment_method ?? "학생회 체크카드",
-      });
-
-      if (item.category && item.confidence != null) {
-        classify.run({
-          paymentId: Number(result.lastInsertRowid),
-          category: item.category,
-          confidence: item.confidence,
-          source: "seed",
-        });
-      }
-    }
+  let balance = initialBalance || 2_500_000;
+  const insertRows = sorted.map((item) => {
+    balance -= item.amount;
+    return {
+      group_id: groupId,
+      merchant: item.merchant,
+      amount: item.amount,
+      balance_after: balance,
+      transacted_at: item.transacted_at,
+      payment_method: item.payment_method ?? "학생회 체크카드",
+    };
   });
 
-  insertMany(sorted);
-  return sorted.length;
+  const { error } = await db.from("payments").insert(insertRows);
+  if (error) throw new Error(`결제 시드 실패: ${error.message}`);
+
+  return insertRows.length;
 }
 
-export function getAllPayments(): PaymentRecord[] {
-  const database = getDb();
-  const rows = database
-    .prepare(
-      `SELECT id, merchant, amount, balance_after, transacted_at, payment_method
-       FROM payments
-       ORDER BY transacted_at DESC, id DESC`
-    )
-    .all() as PaymentRow[];
+export async function getAllPayments(groupId: number): Promise<PaymentRecord[]> {
+  const db = getSupabase();
+  const { data, error } = await db
+    .from("payments")
+    .select("id, merchant, amount, balance_after, transacted_at, payment_method")
+    .eq("group_id", groupId)
+    .order("transacted_at", { ascending: false })
+    .order("id", { ascending: false });
 
-  return rows.map(mapPayment);
+  if (error) throw new Error(`결제 조회 실패: ${error.message}`);
+  return (data as PaymentRow[]).map(mapPayment);
 }
 
-export function getPaymentCount() {
-  const database = getDb();
-  const row = database.prepare("SELECT COUNT(*) as count FROM payments").get() as {
-    count: number;
-  };
-  return row.count;
+export async function getPaymentCount(groupId?: number): Promise<number> {
+  const db = getSupabase();
+  let query = db.from("payments").select("id", { count: "exact", head: true });
+  if (groupId != null) {
+    query = query.eq("group_id", groupId);
+  }
+  const { count, error } = await query;
+  if (error) throw new Error(`결제 건수 조회 실패: ${error.message}`);
+  return count ?? 0;
 }
 
-export function getAccountBalances() {
-  const payments = getAllPayments();
+export async function getAccountBalances(
+  groupId: number
+): Promise<{ initial: number; current: number }> {
+  const payments = await getAllPayments(groupId);
+  const totalBudget = await getBudgetTotal(groupId);
+
   if (payments.length === 0) {
-    return {
-      initial: INITIAL_ACCOUNT_BALANCE,
-      current: INITIAL_ACCOUNT_BALANCE,
-    };
+    return { initial: totalBudget, current: totalBudget };
   }
 
   const oldest = payments[payments.length - 1];
@@ -107,71 +107,92 @@ export function getAccountBalances() {
   };
 }
 
-export function getClassifications(): PaymentClassificationRow[] {
-  const database = getDb();
-  const rows = database
-    .prepare(
-      `SELECT
-         pc.payment_id as paymentId,
-         p.merchant as merchant,
-         pc.category as category,
-         pc.confidence as confidence,
-         pc.source as source
-       FROM payment_classifications pc
-       JOIN payments p ON p.id = pc.payment_id
-       ORDER BY p.transacted_at DESC, p.id DESC`
-    )
-    .all() as PaymentClassificationRow[];
+export async function getClassifications(groupId: number): Promise<PaymentClassificationRow[]> {
+  const db = getSupabase();
+  const { data, error } = await db
+    .from("payment_classifications")
+    .select("payment_id, category, confidence, source, payments!inner(merchant, transacted_at, group_id)")
+    .eq("payments.group_id", groupId)
+    .order("classified_at", { ascending: false });
 
-  return rows;
+  if (error) throw new Error(`분류 조회 실패: ${error.message}`);
+
+  return (data as unknown as Array<{
+    payment_id: number;
+    category: BudgetCategory;
+    confidence: number;
+    source: string;
+    payments: { merchant: string; transacted_at: string };
+  }>).map((row) => ({
+    paymentId: row.payment_id,
+    merchant: row.payments.merchant,
+    category: row.category,
+    confidence: row.confidence,
+    source: row.source,
+  }));
 }
 
-export function getUnclassifiedPayments(): PaymentRecord[] {
-  const database = getDb();
-  const rows = database
-    .prepare(
-      `SELECT p.id, p.merchant, p.amount, p.balance_after, p.transacted_at, p.payment_method
-       FROM payments p
-       LEFT JOIN payment_classifications pc ON pc.payment_id = p.id
-       WHERE pc.payment_id IS NULL
-       ORDER BY p.transacted_at DESC, p.id DESC`
-    )
-    .all() as PaymentRow[];
+export async function getUnclassifiedPayments(groupId?: number): Promise<PaymentRecord[]> {
+  const db = getSupabase();
 
-  return rows.map(mapPayment);
+  let classifiedIds: number[] = [];
+  if (groupId != null) {
+    const { data: payments } = await db.from("payments").select("id").eq("group_id", groupId);
+    const paymentIds = (payments ?? []).map((row) => row.id);
+    if (paymentIds.length === 0) {
+      return [];
+    }
+    const { data: classified, error: classifiedError } = await db
+      .from("payment_classifications")
+      .select("payment_id")
+      .in("payment_id", paymentIds);
+    if (classifiedError) throw new Error(`분류 조회 실패: ${classifiedError.message}`);
+    classifiedIds = (classified ?? []).map((row) => row.payment_id);
+  } else {
+    const { data: classified, error: classifiedError } = await db
+      .from("payment_classifications")
+      .select("payment_id");
+    if (classifiedError) throw new Error(`분류 조회 실패: ${classifiedError.message}`);
+    classifiedIds = (classified ?? []).map((row) => row.payment_id);
+  }
+
+  let query = db
+    .from("payments")
+    .select("id, merchant, amount, balance_after, transacted_at, payment_method")
+    .order("transacted_at", { ascending: false })
+    .order("id", { ascending: false });
+
+  if (groupId != null) {
+    query = query.eq("group_id", groupId);
+  }
+  if (classifiedIds.length > 0) {
+    query = query.not("id", "in", `(${classifiedIds.join(",")})`);
+  }
+
+  const { data, error } = await query;
+  if (error) throw new Error(`미분류 결제 조회 실패: ${error.message}`);
+  return (data as PaymentRow[]).map(mapPayment);
 }
 
-export function saveClassifications(
+export async function saveClassifications(
   items: Array<{
     paymentId: number;
     category: BudgetCategory;
     confidence: number;
     source?: string;
   }>
-) {
-  const database = getDb();
-  const upsert = database.prepare(`
-    INSERT INTO payment_classifications (payment_id, category, confidence, source, classified_at)
-    VALUES (@paymentId, @category, @confidence, @source, datetime('now'))
-    ON CONFLICT(payment_id) DO UPDATE SET
-      category = excluded.category,
-      confidence = excluded.confidence,
-      source = excluded.source,
-      classified_at = datetime('now')
-  `);
+): Promise<void> {
+  if (items.length === 0) return;
+  const db = getSupabase();
 
-  const saveMany = database.transaction(
-    (rows: Array<{ paymentId: number; category: BudgetCategory; confidence: number; source?: string }>) => {
-      for (const row of rows) {
-        upsert.run({
-          paymentId: row.paymentId,
-          category: row.category,
-          confidence: row.confidence,
-          source: row.source ?? "openai",
-        });
-      }
-    }
-  );
+  const rows = items.map((row) => ({
+    payment_id: row.paymentId,
+    category: row.category,
+    confidence: row.confidence,
+    source: row.source ?? "openai",
+    classified_at: new Date().toISOString(),
+  }));
 
-  saveMany(items);
+  const { error } = await db.from("payment_classifications").upsert(rows, { onConflict: "payment_id" });
+  if (error) throw new Error(`분류 저장 실패: ${error.message}`);
 }

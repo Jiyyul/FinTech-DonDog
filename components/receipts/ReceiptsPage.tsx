@@ -1,30 +1,35 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import Button from "@/components/common/Button";
 import ReceiptList from "@/components/receipts/ReceiptList";
 import ReceiptMatchCandidates from "@/components/receipts/ReceiptMatchCandidates";
 import ReceiptParsedForm from "@/components/receipts/ReceiptParsedForm";
 import ReceiptPreview from "@/components/receipts/ReceiptPreview";
 import ReceiptUploadCard from "@/components/receipts/ReceiptUploadCard";
-import {
-  getReceipts,
-  getTransactions,
-  saveReceipt,
-  updateTransactionReceipt,
-} from "@/lib/db/mock-db";
+import { saveReceiptAction } from "@/lib/actions/receipt-actions";
+import { useAuth } from "@/components/providers/AuthProvider";
 import { matchReceiptToTransactions } from "@/lib/receipts/receipt-matching";
 import { parseReceipt } from "@/lib/receipts/receipt-parser";
-import type { ParsedReceipt } from "@/lib/receipts/receipt-types";
+import type { ParsedReceipt, Receipt } from "@/lib/receipts/receipt-types";
 import type { Transaction } from "@/lib/transactions/transaction-types";
 
-export default function ReceiptsPage() {
-  const [transactions, setTransactions] = useState<Transaction[]>(() => getTransactions());
-  const [receipts, setReceipts] = useState(() => getReceipts());
+type ReceiptsPageProps = {
+  initialTransactions: Transaction[];
+  initialReceipts: Receipt[];
+};
+
+export default function ReceiptsPage({ initialTransactions, initialReceipts }: ReceiptsPageProps) {
+  const router = useRouter();
+  const { canEdit } = useAuth();
+  const transactions = initialTransactions;
+  const [receipts, setReceipts] = useState(initialReceipts);
 
   const [file, setFile] = useState<File | null>(null);
   const [parsed, setParsed] = useState<ParsedReceipt | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -63,27 +68,26 @@ export default function ReceiptsPage() {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!file || !parsed) return;
-
-    const receipt = saveReceipt({
-      ...parsed,
-      fileName: file.name,
-      fileType: file.type,
-      fileSize: file.size,
-    });
-
-    if (selectedTransactionId) {
-      updateTransactionReceipt(selectedTransactionId, receipt.id);
-      setTransactions(getTransactions());
+    setSaving(true);
+    try {
+      const receipt = await saveReceiptAction(
+        parsed,
+        { name: file.name, type: file.type, size: file.size },
+        selectedTransactionId
+      );
+      setReceipts((prev) => [receipt, ...prev]);
+      setMessage(
+        selectedTransactionId
+          ? "영수증을 저장하고 거래에 연결했습니다."
+          : "영수증을 저장했습니다. 아직 거래에 연결되지 않았습니다."
+      );
+      resetForm();
+      router.refresh();
+    } finally {
+      setSaving(false);
     }
-    setReceipts(getReceipts());
-    setMessage(
-      selectedTransactionId
-        ? "영수증을 저장하고 거래에 연결했습니다."
-        : "영수증을 저장했습니다. 아직 거래에 연결되지 않았습니다."
-    );
-    resetForm();
   };
 
   return (
@@ -104,6 +108,7 @@ export default function ReceiptsPage() {
       )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
+        {canEdit ? (
         <div className="space-y-6">
           <ReceiptUploadCard onFileSelected={handleFileSelected} />
           {file && <ReceiptPreview file={file} onRemove={resetForm} />}
@@ -118,9 +123,14 @@ export default function ReceiptsPage() {
             </Button>
           )}
         </div>
+        ) : (
+          <div className="rounded-2xl border border-hairline bg-surface/50 px-4 py-6 text-[14px] text-muted">
+            멤버 계정은 영수증 업로드 및 연결을 할 수 없습니다.
+          </div>
+        )}
 
         <div className="space-y-6">
-          {parsed && (
+          {parsed && canEdit && (
             <>
               <ReceiptParsedForm parsed={parsed} onChange={setParsed} />
               <ReceiptMatchCandidates
@@ -129,8 +139,10 @@ export default function ReceiptsPage() {
                 selectedTransactionId={selectedTransactionId}
                 onSelect={(id) => setSelectedTransactionId((prev) => (prev === id ? null : id))}
               />
-              <Button variant="primary" className="w-full" onClick={handleSave}>
-                영수증 저장{selectedTransactionId ? " 및 거래 연결" : ""}
+              <Button variant="primary" className="w-full" onClick={handleSave} disabled={saving}>
+                {saving
+                  ? "저장 중..."
+                  : `영수증 저장${selectedTransactionId ? " 및 거래 연결" : ""}`}
               </Button>
             </>
           )}

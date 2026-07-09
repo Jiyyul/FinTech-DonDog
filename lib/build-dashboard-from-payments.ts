@@ -1,65 +1,49 @@
 import { CATEGORY_COLORS } from "@/lib/chart-colors";
 import { classifyPayment, type StoredClassification } from "@/lib/classify-payments";
 import { enrichTrendWithMoM } from "@/lib/dashboard-utils";
+import { detectPaymentAnomalies, toAuditAnomalyQueue } from "@/lib/anomalies/from-payments";
+import { paymentIdToTransactionId, transactionIdToPaymentId } from "@/lib/payment-types";
+import type { ReviewStatus } from "@/lib/review-repository";
 import type {
   ActivityItem,
   AIReportSummary,
   AuditAnomaly,
   BudgetCategorySlice,
-  BudgetCategory,
   CalendarEvent,
   DashboardTransaction,
   MonthlyBudgetPoint,
-  PaymentCalendarItem,
   TransactionStatus,
 } from "@/lib/dashboard-types";
 import type { PaymentRecord } from "@/lib/payment-types";
-import type { AuditReviewRow } from "@/lib/audit-types";
 
 const AMOUNT_THRESHOLD = 300_000;
-const BUDGET_CAP = 1_200_000;
 
 function formatDateLabel(date: string) {
   const [, month, day] = date.split("-");
   return `${Number(month)}월 ${Number(day)}일`;
 }
 
-function inferStatus(amount: number, confidence: number, isClassified: boolean): TransactionStatus {
+function inferStatus(amount: number, confidence: number): TransactionStatus {
   if (amount >= AMOUNT_THRESHOLD) return "review";
-  if (isClassified && confidence < 80) return "review";
+  if (confidence < 80) return "review";
   return "completed";
 }
 
 function paymentToTransaction(
   record: PaymentRecord,
   classificationMap: Map<number, StoredClassification>,
-  review?: AuditReviewRow
+  linkedPaymentIds: Set<number>
 ): DashboardTransaction {
   const date = record.transactedAt;
-  const stored = classificationMap.get(record.id);
-  let { category, confidence } = classifyPayment(
+  const { category, confidence } = classifyPayment(
     record.id,
     record.merchant,
     classificationMap
   );
-
-  if (review?.categoryOverride) {
-    category = review.categoryOverride;
-    confidence = 100;
-  }
-
-  const resolved =
-    review &&
-    ["approved", "exception", "co_approved"].includes(review.reviewStatus);
-
-  let status = inferStatus(record.amount, confidence, Boolean(stored));
-  if (resolved) {
-    status = "completed";
-  }
+  const status = inferStatus(record.amount, confidence);
 
   return {
-    id: `tx-${String(record.id).padStart(3, "0")}`,
-    paymentId: record.id,
+    id: paymentIdToTransactionId(record.id),
     merchant: record.merchant,
     category,
     date,
@@ -69,7 +53,7 @@ function paymentToTransaction(
     status,
     paymentMethod: record.paymentMethod,
     transactionId: `TX-${date.replace(/-/g, "")}-${String(record.id).padStart(3, "0")}`,
-    hasReceipt: record.amount < 30_000,
+    hasReceipt: linkedPaymentIds.has(record.id),
     aiConfidence: confidence,
   };
 }
@@ -77,28 +61,17 @@ function paymentToTransaction(
 export function buildTransactionsFromPayments(
   payments: PaymentRecord[],
   classificationMap: Map<number, StoredClassification>,
-  reviews: AuditReviewRow[] = []
+  linkedPaymentIds: Set<number>
 ): DashboardTransaction[] {
-  const reviewByPayment = new Map<number, AuditReviewRow[]>();
-  for (const review of reviews) {
-    const list = reviewByPayment.get(review.paymentId) ?? [];
-    list.push(review);
-    reviewByPayment.set(review.paymentId, list);
-  }
-
-  return payments.map((record) => {
-    const paymentReviews = reviewByPayment.get(record.id) ?? [];
-    const categoryReview = paymentReviews.find((r) => r.categoryOverride);
-    return paymentToTransaction(record, classificationMap, categoryReview);
-  });
+  return payments.map((record) => paymentToTransaction(record, classificationMap, linkedPaymentIds));
 }
 
 export function buildAllTransactions(
   payments: PaymentRecord[],
   classificationMap: Map<number, StoredClassification>,
-  reviews: AuditReviewRow[] = []
+  linkedPaymentIds: Set<number>
 ): DashboardTransaction[] {
-  return [...buildTransactionsFromPayments(payments, classificationMap, reviews)].reverse();
+  return [...buildTransactionsFromPayments(payments, classificationMap, linkedPaymentIds)].reverse();
 }
 
 function sumByCategory(transactions: DashboardTransaction[]) {
@@ -110,154 +83,58 @@ function sumByCategory(transactions: DashboardTransaction[]) {
 }
 
 export function buildBudgetSlices(
-  transactions: DashboardTransaction[],
-  categoryBudgets: { category: BudgetCategory; budget: number }[] = []
+  transactions: DashboardTransaction[]
 ): BudgetCategorySlice[] {
   const totals = sumByCategory(transactions);
-  const budgetMap = new Map(categoryBudgets.map((item) => [item.category, item.budget]));
-  const totalBudget = [...budgetMap.values()].reduce((sum, value) => sum + value, 0);
+  const totalUsed = [...totals.values()].reduce((s, v) => s + v, 0);
 
-  const categories = new Set<BudgetCategory>([
-    ...categoryBudgets.map((item) => item.category),
-    ...([...totals.keys()] as BudgetCategory[]),
-  ]);
-
-  return [...categories]
-    .map((category) => {
-      const amount = totals.get(category) ?? 0;
-      const budget = budgetMap.get(category) ?? 0;
-      const percent =
-        totalBudget > 0
-          ? Math.round((budget / totalBudget) * 100)
-          : amount > 0
-            ? Math.round((amount / [...totals.values()].reduce((s, v) => s + v, 0)) * 100)
-            : 0;
-
-      return {
-        category,
-        percent,
-        amount,
-        color: CATEGORY_COLORS[category],
-      };
-    })
-    .filter((slice) => slice.percent > 0 || slice.amount > 0)
+  return [...totals.entries()]
+    .map(([category, amount]) => ({
+      category: category as BudgetCategorySlice["category"],
+      percent: totalUsed > 0 ? Math.round((amount / totalUsed) * 100) : 0,
+      amount,
+      color: CATEGORY_COLORS[category as keyof typeof CATEGORY_COLORS],
+    }))
     .sort((a, b) => b.amount - a.amount);
+}
+
+function isResolved(transactionId: string, reviewStatusMap: Map<number, ReviewStatus>): boolean {
+  const paymentId = transactionIdToPaymentId(transactionId);
+  if (paymentId == null) return false;
+  const status = reviewStatusMap.get(paymentId);
+  return status != null && status !== "pending";
 }
 
 export function buildAnomalyQueue(
   transactions: DashboardTransaction[],
-  reviews: AuditReviewRow[] = []
-): {
-  active: AuditAnomaly[];
-  deferred: AuditAnomaly[];
-  pendingCoApproval: AuditAnomaly[];
-} {
-  const reviewByKey = new Map(
-    reviews.map((r) => [`${r.paymentId}:${r.anomalyType}`, r])
+  budgetTotal: number,
+  calendarEvents: CalendarEvent[],
+  reviewStatusMap: Map<number, ReviewStatus>
+): AuditAnomaly[] {
+  // back_receipt의 규칙기반 감지 엔진(예산초과·중복결제·일정불일치·영수증누락)을
+  // 실제 결제내역에 적용한다 (lib/anomalies/from-payments.ts 어댑터 참고).
+  const ruleResults = detectPaymentAnomalies(
+    transactions,
+    budgetTotal,
+    AMOUNT_THRESHOLD,
+    calendarEvents
   );
+  const anomalies = toAuditAnomalyQueue(ruleResults, transactions);
 
-  const candidates: AuditAnomaly[] = [];
-  let idCounter = 1;
-  const nextId = () => `anomaly-${idCounter++}`;
-
-  for (const tx of transactions.filter((t) => t.amount >= AMOUNT_THRESHOLD)) {
-    candidates.push({
-      id: nextId(),
-      type: "amount_threshold",
-      transaction: tx,
-      reason: `₩${AMOUNT_THRESHOLD.toLocaleString()}원 이상 결제로 공동 승인이 필요합니다.`,
-      confidence: 99,
-      ruleReference: "학생회 회칙 제3조 — 30만원 이상 결제는 공동 승인 필요",
-    });
-  }
-
-  for (const tx of transactions.filter(
-    (t) => (t.aiConfidence ?? 100) > 0 && (t.aiConfidence ?? 100) < 80
-  )) {
-    candidates.push({
-      id: nextId(),
+  // OpenAI 분류 신뢰도는 규칙 엔진에 없는 branch_openai 고유 신호이므로 별도로 유지한다.
+  const lowConfidence = transactions.find((t) => (t.aiConfidence ?? 100) < 80);
+  if (lowConfidence && !anomalies.some((a) => a.transaction.id === lowConfidence.id)) {
+    anomalies.push({
+      id: "ai-low-confidence",
       type: "low_confidence",
-      transaction: tx,
+      transaction: lowConfidence,
       reason: "AI 분류 신뢰도가 80% 이하입니다. 카테고리를 확인해 주세요.",
-      confidence: tx.aiConfidence ?? 72,
+      confidence: lowConfidence.aiConfidence ?? 72,
     });
   }
 
-  const mtEvent = CALENDAR_EVENTS.find((e) => e.id === "ev-1");
-  for (const tx of transactions.filter((t) => {
-    if (!mtEvent || !(t.merchant.includes("신라호텔") || t.merchant.includes("호텔"))) {
-      return false;
-    }
-    const [year, month, day] = t.date.split("-").map(Number);
-    return (
-      year === mtEvent.year &&
-      month === mtEvent.month &&
-      day !== mtEvent.date
-    );
-  })) {
-    candidates.push({
-      id: nextId(),
-      type: "schedule_mismatch",
-      transaction: tx,
-      reason:
-        "학생회 MT 일정(7월 12일)이 등록되어 있으나, 호텔 결제 시점과 일정이 일치하지 않습니다.",
-      confidence: 88,
-      relatedSchedule: "학생회 MT",
-      relatedScheduleId: "ev-1",
-    });
-  }
-
-  for (const tx of transactions.filter(
-    (t) =>
-      t.category === "식비" &&
-      (t.merchant.includes("노래방") ||
-        t.merchant.includes("주점") ||
-        t.merchant.includes("클럽"))
-  )) {
-    candidates.push({
-      id: nextId(),
-      type: "rule_violation",
-      transaction: tx,
-      reason: "학생회 회칙상 유흥업소·노래방 회식비는 식비로 처리할 수 없습니다.",
-      confidence: 91,
-      ruleReference: "학생회 회칙 제5조 — 유흥업소 지출 금지",
-    });
-  }
-
-  const active: AuditAnomaly[] = [];
-  const deferred: AuditAnomaly[] = [];
-  const pendingCoApproval: AuditAnomaly[] = [];
-
-  for (const anomaly of candidates) {
-    const paymentId = anomaly.transaction.paymentId;
-    const review = reviewByKey.get(`${paymentId}:${anomaly.type}`);
-
-    if (!review) {
-      active.push(anomaly);
-      continue;
-    }
-
-    const enriched: AuditAnomaly = {
-      ...anomaly,
-      transaction: {
-        ...anomaly.transaction,
-        category: review.categoryOverride ?? anomaly.transaction.category,
-        status: ["approved", "exception", "co_approved"].includes(review.reviewStatus)
-          ? "completed"
-          : anomaly.transaction.status,
-      },
-      relatedScheduleId: review.relatedScheduleId ?? anomaly.relatedScheduleId,
-      relatedSchedule: review.relatedScheduleTitle ?? anomaly.relatedSchedule,
-    };
-
-    if (review.reviewStatus === "deferred") {
-      deferred.push({ ...enriched, deferred: true });
-    } else if (review.reviewStatus === "co_approval_pending") {
-      pendingCoApproval.push({ ...enriched, coApprovalPending: true });
-    }
-  }
-
-  return { active, deferred, pendingCoApproval };
+  // 이미 승인/이월/예외처리로 검토가 끝난 거래는 대기 큐에서 제외한다.
+  return anomalies.filter((a) => !isResolved(a.transaction.id, reviewStatusMap));
 }
 
 export function buildActivityFeed(
@@ -266,29 +143,10 @@ export function buildActivityFeed(
   const recent = transactions.slice(0, 3);
   return recent.map((tx, i) => ({
     id: `act-${i + 1}`,
-    time: tx.dateLabel,
+    time: i === 0 ? "3분 전" : i === 1 ? "12분 전" : "35분 전",
     message: `${tx.merchant}을(를) ${tx.category}(으)로 분류했습니다.`,
     hasDogIcon: true,
   }));
-}
-
-export function buildPaymentCalendarItems(
-  transactions: DashboardTransaction[]
-): PaymentCalendarItem[] {
-  return transactions.map((tx) => {
-    const [year, month, day] = tx.date.split("-").map(Number);
-    return {
-      id: tx.id,
-      paymentId: tx.paymentId,
-      merchant: tx.merchant,
-      amount: tx.amount,
-      category: tx.category,
-      year,
-      month,
-      date: day,
-      dateLabel: tx.dateLabel,
-    };
-  });
 }
 
 export function buildAiReportSummary(
@@ -321,6 +179,7 @@ export function buildAiReportSummary(
 
 export function buildMonthlyBudgetTrend(
   payments: PaymentRecord[],
+  budgetTotal: number,
   initialBalance: number
 ): MonthlyBudgetPoint[] {
   const byMonth = new Map<string, number>();
@@ -340,7 +199,7 @@ export function buildMonthlyBudgetTrend(
     points.push({
       month,
       used,
-      budget: BUDGET_CAP,
+      budget: budgetTotal,
       balance: runningBalance,
     });
   }
@@ -349,22 +208,32 @@ export function buildMonthlyBudgetTrend(
 }
 
 export function buildBudgetStats(
-  payments: PaymentRecord[],
-  totalBudget: number,
-  currentBalance: number
+  transactions: DashboardTransaction[],
+  budgetTotal: number,
+  pendingTransactionIds: Set<string>
 ) {
-  const used = payments.reduce((sum, payment) => sum + payment.amount, 0);
+  const committed = transactions.filter((t) => !pendingTransactionIds.has(t.id));
+  const pending = transactions.filter((t) => pendingTransactionIds.has(t.id));
+
+  const used = committed.reduce((sum, t) => sum + t.amount, 0);
+  const pendingUsed = pending.reduce((sum, t) => sum + t.amount, 0);
+  const remaining = budgetTotal - used;
+
+  const usagePercent = budgetTotal > 0 ? Math.round((used / budgetTotal) * 100) : 0;
+
   return {
-    total: totalBudget,
+    total: budgetTotal,
     used,
-    remaining: currentBalance,
-    usagePercent: totalBudget > 0 ? Math.round((used / totalBudget) * 100) : 0,
-    usageSpeedPercent: 12,
-    doughnutCenterPercent: totalBudget > 0 ? Math.round((used / totalBudget) * 100) : 0,
+    pendingUsed,
+    remaining,
+    usagePercent,
+    // TODO: "지난달 같은 기간 대비 사용 속도"를 계산하려면 월별 이력 비교가 필요하다.
+    // 지금은 월별 결제 데이터가 충분치 않아 임시로 0(비교 없음)으로 둔다.
+    usageSpeedPercent: 0,
+    doughnutCenterPercent: usagePercent,
   };
 }
 
-export const DOUGHNUT_CENTER_PERCENT = 74;
 export const AMOUNT_THRESHOLD_EXPORT = AMOUNT_THRESHOLD;
 
 export const CALENDAR_EVENTS: CalendarEvent[] = [

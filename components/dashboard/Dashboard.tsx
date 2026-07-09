@@ -1,6 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  approveAnomalyAction,
+  deferAnomalyAction,
+  recordExceptionAction,
+  requestCoApprovalAction,
+} from "@/lib/actions/anomaly-actions";
+import { updateTransactionCategoryAction } from "@/lib/actions/classification-actions";
+import { deleteScheduleAction, saveScheduleAction } from "@/lib/actions/schedule-actions";
 import HeroBudgetCard from "@/components/dashboard/HeroBudgetCard";
 import AuditCard from "@/components/dashboard/AuditCard";
 import CalendarCard from "@/components/dashboard/CalendarCard";
@@ -14,9 +23,8 @@ import ExceptionModal from "@/components/dashboard/ExceptionModal";
 import ReceiptUploadModal from "@/components/dashboard/ReceiptUploadModal";
 import ScheduleFormModal from "@/components/dashboard/ScheduleFormModal";
 import FloatingAIChat from "@/components/ai/FloatingAIChat";
+import { useAuth } from "@/components/providers/AuthProvider";
 import { useDashboardData } from "@/components/providers/DashboardDataProvider";
-import { useSearch } from "@/components/layout/SearchProvider";
-import { useAuditReviewActions } from "@/hooks/useAuditReviewActions";
 import type {
   AuditAnomaly,
   BudgetCategory,
@@ -25,28 +33,17 @@ import type {
 } from "@/lib/dashboard-types";
 
 export default function Dashboard() {
+  const router = useRouter();
+  const { canEdit } = useAuth();
   const {
     anomalyQueue,
-    deferredAnomalies: initialDeferred,
-    pendingCoApprovals: initialPendingCoApprovals,
     calendarEvents: initialCalendarEvents,
-    paymentCalendarItems,
     recentTransactions,
-    allTransactions,
   } = useDashboardData();
-  const { persistReview } = useAuditReviewActions();
-  const { selectTransactionId, clearSelectTransaction } = useSearch();
-
   const [anomalies, setAnomalies] = useState(anomalyQueue);
-  const [deferredAnomalies, setDeferredAnomalies] = useState(initialDeferred);
-  const [pendingCoApprovals, setPendingCoApprovals] = useState(initialPendingCoApprovals);
+  const [deferredAnomalies, setDeferredAnomalies] = useState<AuditAnomaly[]>([]);
   const [transactions, setTransactions] = useState(recentTransactions);
   const [calendarEvents, setCalendarEvents] = useState(initialCalendarEvents);
-
-  useEffect(() => setAnomalies(anomalyQueue), [anomalyQueue]);
-  useEffect(() => setDeferredAnomalies(initialDeferred), [initialDeferred]);
-  useEffect(() => setPendingCoApprovals(initialPendingCoApprovals), [initialPendingCoApprovals]);
-  useEffect(() => setTransactions(recentTransactions), [recentTransactions]);
 
   const [anomalyModalOpen, setAnomalyModalOpen] = useState(false);
   const [selectedAnomaly, setSelectedAnomaly] = useState<AuditAnomaly | null>(null);
@@ -69,24 +66,19 @@ export default function Dashboard() {
   const handleSelectTransaction = (tx: DashboardTransaction) => {
     const linkedAnomaly =
       anomalies.find((a) => a.transaction.id === tx.id) ??
-      deferredAnomalies.find((a) => a.transaction.id === tx.id) ??
-      pendingCoApprovals.find((a) => a.transaction.id === tx.id);
+      deferredAnomalies.find((a) => a.transaction.id === tx.id);
     if (linkedAnomaly) {
-      openAnomalyReview(linkedAnomaly);
+      if (canEdit) {
+        openAnomalyReview(linkedAnomaly);
+      } else {
+        setSelectedTx(tx);
+        setTxDrawerOpen(true);
+      }
       return;
     }
     setSelectedTx(tx);
     setTxDrawerOpen(true);
   };
-
-  useEffect(() => {
-    if (!selectTransactionId) return;
-    const tx = allTransactions.find((item) => item.id === selectTransactionId);
-    if (tx) {
-      handleSelectTransaction(tx);
-    }
-    clearSelectTransaction();
-  }, [selectTransactionId, allTransactions, clearSelectTransaction]);
 
   const closeAnomalyModal = () => {
     setAnomalyModalOpen(false);
@@ -99,24 +91,24 @@ export default function Dashboard() {
 
   const handleApprove = async () => {
     if (!selectedAnomaly) return;
-    const action = selectedAnomaly.coApprovalPending ? "co_approved" : "approved";
-    await persistReview(selectedAnomaly, action, {
-      category: selectedAnomaly.transaction.category,
-    });
+    const transactionId = selectedAnomaly.transaction.id;
     removeFromActiveQueue(selectedAnomaly.id);
     setDeferredAnomalies((prev) => prev.filter((a) => a.id !== selectedAnomaly.id));
-    setPendingCoApprovals((prev) => prev.filter((a) => a.id !== selectedAnomaly.id));
     closeAnomalyModal();
+    await approveAnomalyAction(
+      transactionId,
+      selectedAnomaly.transaction.merchant,
+      selectedAnomaly.transaction.category
+    );
+    router.refresh();
   };
 
   const handleDefer = async () => {
     if (!selectedAnomaly) return;
-
-    await persistReview(selectedAnomaly, "deferred", {
-      category: selectedAnomaly.transaction.category,
-    });
+    const transactionId = selectedAnomaly.transaction.id;
 
     const deferredItem: AuditAnomaly = { ...selectedAnomaly, deferred: true };
+
     setDeferredAnomalies((prev) => {
       if (prev.some((a) => a.id === deferredItem.id)) return prev;
       return [...prev, deferredItem];
@@ -124,44 +116,52 @@ export default function Dashboard() {
     removeFromActiveQueue(selectedAnomaly.id);
     setExceptionModalOpen(false);
     closeAnomalyModal();
+    await deferAnomalyAction(transactionId);
+    router.refresh();
   };
 
   const handleCoApproval = async () => {
     if (!selectedAnomaly) return;
-    await persistReview(selectedAnomaly, "co_approval_pending", {
-      category: selectedAnomaly.transaction.category,
-    });
-    const pendingItem: AuditAnomaly = {
-      ...selectedAnomaly,
-      coApprovalPending: true,
-    };
-    setPendingCoApprovals((prev) => {
-      if (prev.some((a) => a.id === pendingItem.id)) return prev;
-      return [...prev, pendingItem];
-    });
+    const transactionId = selectedAnomaly.transaction.id;
     removeFromActiveQueue(selectedAnomaly.id);
+    setDeferredAnomalies((prev) => prev.filter((a) => a.id !== selectedAnomaly.id));
     closeAnomalyModal();
+    await requestCoApprovalAction(
+      transactionId,
+      selectedAnomaly.transaction.merchant,
+      selectedAnomaly.transaction.category
+    );
+    router.refresh();
   };
 
   const handleLinkSchedule = async (scheduleId: string) => {
     if (!selectedAnomaly) return;
+    const transactionId = selectedAnomaly.transaction.id;
     const schedule = calendarEvents.find((e) => e.id === scheduleId);
-    if (!schedule) return;
-
-    await persistReview(selectedAnomaly, "exception", {
-      category: selectedAnomaly.transaction.category,
-      relatedScheduleId: scheduleId,
-      relatedScheduleTitle: schedule.title,
-    });
-
+    if (schedule) {
+      setAnomalies((prev) =>
+        prev.map((a) =>
+          a.id === selectedAnomaly.id
+            ? { ...a, relatedScheduleId: scheduleId, relatedSchedule: schedule.title }
+            : a
+        )
+      );
+      setSelectedAnomaly((prev) =>
+        prev
+          ? { ...prev, relatedScheduleId: scheduleId, relatedSchedule: schedule.title }
+          : null
+      );
+    }
     removeFromActiveQueue(selectedAnomaly.id);
     setExceptionModalOpen(false);
     closeAnomalyModal();
+    await recordExceptionAction(transactionId, schedule ? `일정 연결: ${schedule.title}` : undefined);
+    router.refresh();
   };
 
   const handleCategoryChange = async (category: BudgetCategory) => {
     if (!selectedAnomaly) return;
-
+    const transactionId = selectedAnomaly.transaction.id;
     const update = (a: AuditAnomaly) =>
       a.id === selectedAnomaly.id
         ? { ...a, transaction: { ...a.transaction, category } }
@@ -171,28 +171,25 @@ export default function Dashboard() {
     setSelectedAnomaly((prev) =>
       prev ? { ...prev, transaction: { ...prev.transaction, category } } : null
     );
-
-    await persistReview(selectedAnomaly, "category_change", { category });
+    await updateTransactionCategoryAction(transactionId, category);
+    router.refresh();
   };
 
-  const handleSaveEvent = (event: Omit<CalendarEvent, "id"> & { id?: string }) => {
-    if (event.id) {
-      setCalendarEvents((prev) =>
-        prev.map((e) => (e.id === event.id ? { ...e, ...event, id: event.id } : e))
-      );
-    } else {
-      const newEvent: CalendarEvent = {
-        ...event,
-        id: `ev-${Date.now()}`,
-      };
-      setCalendarEvents((prev) => [...prev, newEvent]);
-    }
+  const handleSaveEvent = async (event: Omit<CalendarEvent, "id"> & { id?: string }) => {
+    const saved = await saveScheduleAction(event);
+    setCalendarEvents((prev) => {
+      const exists = prev.some((e) => e.id === saved.id);
+      return exists ? prev.map((e) => (e.id === saved.id ? saved : e)) : [...prev, saved];
+    });
     setEditingEvent(null);
+    router.refresh();
   };
 
-  const handleDeleteEvent = (id: string) => {
+  const handleDeleteEvent = async (id: string) => {
     setCalendarEvents((prev) => prev.filter((e) => e.id !== id));
     setEditingEvent(null);
+    await deleteScheduleAction(id);
+    router.refresh();
   };
 
   const handleReceiptUpload = () => {
@@ -215,10 +212,9 @@ export default function Dashboard() {
             className="h-full min-h-[360px]"
             anomalies={anomalies}
             deferredAnomalies={deferredAnomalies}
-            pendingCoApprovals={pendingCoApprovals}
+            readOnly={!canEdit}
             onReview={openAnomalyReview}
             onReviewDeferred={openAnomalyReview}
-            onReviewPendingCoApproval={openAnomalyReview}
           />
         </div>
       </section>
@@ -229,7 +225,7 @@ export default function Dashboard() {
             variant="compact"
             className="h-full min-h-[360px]"
             events={calendarEvents}
-            payments={paymentCalendarItems}
+            readOnly={!canEdit}
             onAddEvent={() => {
               setEditingEvent(null);
               setScheduleFormOpen(true);
@@ -253,6 +249,7 @@ export default function Dashboard() {
           <RecentTransactions
             transactions={transactions}
             onSelect={handleSelectTransaction}
+            canAddReceipt={canEdit}
             onAddReceipt={(tx) => {
               setReceiptTx(tx);
               setReceiptModalOpen(true);
@@ -264,24 +261,51 @@ export default function Dashboard() {
         </div>
       </section>
 
-      <AnomalyReviewModal
-        open={anomalyModalOpen}
-        anomaly={selectedAnomaly}
-        onClose={closeAnomalyModal}
-        onApprove={handleApprove}
-        onException={() => setExceptionModalOpen(true)}
-        onDefer={handleDefer}
-        onRequestCoApproval={handleCoApproval}
-        onCategoryChange={handleCategoryChange}
-      />
+      {canEdit && (
+        <>
+          <AnomalyReviewModal
+            open={anomalyModalOpen}
+            anomaly={selectedAnomaly}
+            onClose={closeAnomalyModal}
+            onApprove={handleApprove}
+            onException={() => setExceptionModalOpen(true)}
+            onDefer={handleDefer}
+            onRequestCoApproval={handleCoApproval}
+            onCategoryChange={handleCategoryChange}
+          />
 
-      <ExceptionModal
-        open={exceptionModalOpen}
-        schedules={calendarEvents}
-        onClose={() => setExceptionModalOpen(false)}
-        onLinkSchedule={handleLinkSchedule}
-        onDefer={handleDefer}
-      />
+          <ExceptionModal
+            open={exceptionModalOpen}
+            schedules={calendarEvents}
+            onClose={() => setExceptionModalOpen(false)}
+            onLinkSchedule={handleLinkSchedule}
+            onDefer={handleDefer}
+          />
+
+          <ReceiptUploadModal
+            open={receiptModalOpen}
+            merchant={receiptTx?.merchant ?? ""}
+            onClose={() => {
+              setReceiptModalOpen(false);
+              setReceiptTx(null);
+            }}
+            onUpload={handleReceiptUpload}
+          />
+
+          <ScheduleFormModal
+            open={scheduleFormOpen}
+            initial={editingEvent}
+            year={2026}
+            month={7}
+            onClose={() => {
+              setScheduleFormOpen(false);
+              setEditingEvent(null);
+            }}
+            onSave={handleSaveEvent}
+            onDelete={handleDeleteEvent}
+          />
+        </>
+      )}
 
       <TransactionDrawer
         open={txDrawerOpen}
@@ -290,29 +314,6 @@ export default function Dashboard() {
           setTxDrawerOpen(false);
           setSelectedTx(null);
         }}
-      />
-
-      <ReceiptUploadModal
-        open={receiptModalOpen}
-        merchant={receiptTx?.merchant ?? ""}
-        onClose={() => {
-          setReceiptModalOpen(false);
-          setReceiptTx(null);
-        }}
-        onUpload={handleReceiptUpload}
-      />
-
-      <ScheduleFormModal
-        open={scheduleFormOpen}
-        initial={editingEvent}
-        year={2026}
-        month={7}
-        onClose={() => {
-          setScheduleFormOpen(false);
-          setEditingEvent(null);
-        }}
-        onSave={handleSaveEvent}
-        onDelete={handleDeleteEvent}
       />
 
       <FloatingAIChat />
