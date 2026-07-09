@@ -98,7 +98,6 @@ export default function FullReportPage() {
       <Card>
         <h2 className="mb-5 text-[16px] font-semibold text-navy">⚠ AI 이상 감지</h2>
         <ul className="space-y-3">
-          <AnomalyRow label="회칙 위반 가능" count={report.ruleViolations} tone="danger" />
           <AnomalyRow label="공동 승인 필요" count={report.coApprovalRequired} tone="warning" />
           <AnomalyRow label="이상 거래" count={report.anomalyCount} tone="navy" />
         </ul>

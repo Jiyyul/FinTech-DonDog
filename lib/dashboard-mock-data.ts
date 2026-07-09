@@ -60,7 +60,7 @@ export const ANOMALY_QUEUE: AuditAnomaly[] = [
     type: "amount_threshold",
     transaction: MT_TRANSACTION,
     reason: `₩${AMOUNT_THRESHOLD.toLocaleString()}원 이상 결제로 공동 승인이 필요합니다.`,
-    ruleReference: "학생회 회칙 제3조 — 30만원 이상 결제는 공동 승인 필요",
+    ruleReference: "30만원 이상 결제는 공동 승인 필요",
   },
   {
     id: "anomaly-3",
@@ -96,7 +96,7 @@ export const ANOMALY_QUEUE: AuditAnomaly[] = [
       transactionId: "TX-20260701-001",
       aiConfidence: 88,
     },
-    reason: "회칙상 식비 1인당 20,000원 한도를 초과했을 가능성이 있습니다. (1인당 약 45,000원)",
+    reason: "식비 1인당 20,000원 한도를 초과했을 가능성이 있습니다. (1인당 약 45,000원)",
     ruleReference: "식비 1인당 20,000원",
   },
   {
@@ -270,7 +270,7 @@ export const AI_REPORT_SUMMARY: AIReportSummary = {
     "전달 대비 행사비는 8.1% 증가했습니다.",
     "전달 대비 운영비는 2.3% 증가했습니다.",
     "행사비가 예산을 초과했습니다.",
-    "회칙 위반 가능 1건, 이상 거래 3건이 감지되었습니다.",
+    "예산 초과 1건, 이상 거래 3건이 감지되었습니다.",
   ],
 };
 
@@ -315,7 +315,6 @@ export const AI_CHAT_SUGGESTIONS = [
   "이번 MT 예산은 얼마 사용되었나요?",
   "이번 달 식비는 얼마인가요?",
   "가장 큰 지출은 무엇인가요?",
-  "회칙 위반 거래가 있나요?",
 ];
 
 export const AI_CHAT_RESPONSES: Record<string, string> = {
@@ -325,6 +324,4 @@ export const AI_CHAT_RESPONSES: Record<string, string> = {
     "이번 달 식비는 ₩1,276,800으로 전체 예산의 24%를 차지해요.",
   "가장 큰 지출은 무엇인가요?":
     "가장 큰 지출은 MT 펜션 예약 ₩850,000 (행사비)입니다.",
-  "회칙 위반 거래가 있나요?":
-    "회칙 위반 가능 거래 1건이 있어요. 한식당 모임 ₩180,000 — 식비 1인당 한도 초과 가능성이 있습니다.",
 };

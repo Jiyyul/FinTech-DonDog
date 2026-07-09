@@ -1,7 +1,8 @@
+import { useEffect, useState } from "react";
 import Card from "@/components/common/Card";
 import Badge from "@/components/common/Badge";
 import Button from "@/components/common/Button";
-import { Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
 import { ANOMALY_TYPE_LABELS, type AuditAnomaly } from "@/lib/dashboard-types";
 
@@ -22,7 +23,13 @@ export default function AuditCard({
   readOnly = false,
   className = "",
 }: AuditCardProps) {
-  const primary = anomalies[0];
+  const [previewIndex, setPreviewIndex] = useState(0);
+
+  useEffect(() => {
+    setPreviewIndex((prev) => Math.min(prev, Math.max(anomalies.length - 1, 0)));
+  }, [anomalies.length]);
+
+  const primary = anomalies[previewIndex];
   const totalCount = anomalies.length + deferredAnomalies.length;
 
   return (
@@ -75,9 +82,36 @@ export default function AuditCard({
       )}
 
       <div className="flex min-h-0 flex-1 flex-col justify-center">
-        <p className="dash-section-label normal-case tracking-normal">
-          확인 필요한 거래
-        </p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="dash-section-label normal-case tracking-normal">
+            확인 필요한 거래
+          </p>
+          {anomalies.length > 1 && (
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                className="ui-icon-btn h-6 w-6"
+                aria-label="이전 이상거래"
+                onClick={() =>
+                  setPreviewIndex((i) => (i - 1 + anomalies.length) % anomalies.length)
+                }
+              >
+                <ChevronLeft size={13} strokeWidth={1.75} />
+              </button>
+              <span className="min-w-[2.5rem] text-center text-[11px] font-medium tabular-nums text-muted">
+                {previewIndex + 1} / {anomalies.length}
+              </span>
+              <button
+                type="button"
+                className="ui-icon-btn h-6 w-6"
+                aria-label="다음 이상거래"
+                onClick={() => setPreviewIndex((i) => (i + 1) % anomalies.length)}
+              >
+                <ChevronRight size={13} strokeWidth={1.75} />
+              </button>
+            </div>
+          )}
+        </div>
         <p className="mt-1.5 dash-metric-xl">
           {anomalies.length}
           <span className="ml-1 text-[18px] font-medium text-muted">건</span>

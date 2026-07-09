@@ -100,7 +100,7 @@ export const ANOMALY_TYPE_LABELS: Record<AnomalyType, string> = {
   schedule_mismatch: "일정 불일치",
   amount_threshold: "고액 결제",
   low_confidence: "카테고리 확인 필요",
-  rule_violation: "회칙 위반 가능",
+  rule_violation: "예산 초과",
   duplicate_payment: "중복 결제",
   receipt_required: "영수증 필요",
 };

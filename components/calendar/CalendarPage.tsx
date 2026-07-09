@@ -12,7 +12,7 @@ import type { CalendarEvent } from "@/lib/dashboard-types";
 
 export default function CalendarPage() {
   const router = useRouter();
-  const { calendarEvents: initialEvents } = useDashboardData();
+  const { calendarEvents: initialEvents, allTransactions } = useDashboardData();
   const [events, setEvents] = useState(initialEvents);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<CalendarEvent | null>(null);
@@ -51,6 +51,7 @@ export default function CalendarPage() {
 
       <CalendarCard
         events={events}
+        transactions={allTransactions}
         onAddEvent={() => {
           setEditing(null);
           setFormOpen(true);

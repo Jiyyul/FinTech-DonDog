@@ -273,6 +273,7 @@ export default function Dashboard() {
             variant="compact"
             className="h-full min-h-[360px]"
             events={calendarEvents}
+            transactions={allTransactions}
             readOnly={!canEdit}
             onAddEvent={() => {
               setEditingEvent(null);
@@ -282,6 +283,7 @@ export default function Dashboard() {
               setEditingEvent(event);
               setScheduleFormOpen(true);
             }}
+            onSelectTransaction={handleSelectTransaction}
           />
         </div>
         <div className="dash-grid-cell min-w-0">

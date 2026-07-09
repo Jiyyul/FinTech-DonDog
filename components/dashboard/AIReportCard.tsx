@@ -117,18 +117,11 @@ export default function AIReportCard({
           description="예산 초과 항목"
           tone="warning"
         />
-        <div className="grid grid-cols-2 gap-2">
-          <ReportMetric
-            value={`${report.ruleViolations}건`}
-            description="회칙 위반 가능"
-            tone="danger"
-          />
-          <ReportMetric
-            value={`${report.anomalyCount}건`}
-            description="이상 거래 감지"
-            tone="warning"
-          />
-        </div>
+        <ReportMetric
+          value={`${report.anomalyCount}건`}
+          description="이상 거래 감지"
+          tone="warning"
+        />
       </div>
 
       <div className="mt-5 shrink-0">

@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import Card from "@/components/common/Card";
-import type { CalendarEvent } from "@/lib/dashboard-types";
+import { formatCurrency } from "@/lib/format";
+import type { CalendarEvent, DashboardTransaction } from "@/lib/dashboard-types";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -17,19 +18,23 @@ function getFirstDayOfMonth(year: number, month: number) {
 
 type CalendarCardProps = {
   events: CalendarEvent[];
+  transactions?: DashboardTransaction[];
   variant?: "default" | "compact";
   className?: string;
   onAddEvent: () => void;
   onSelectEvent: (event: CalendarEvent) => void;
+  onSelectTransaction?: (transaction: DashboardTransaction) => void;
   readOnly?: boolean;
 };
 
 export default function CalendarCard({
   events,
+  transactions = [],
   variant = "default",
   className = "",
   onAddEvent,
   onSelectEvent,
+  onSelectTransaction,
   readOnly = false,
 }: CalendarCardProps) {
   const isCompact = variant === "compact";
@@ -55,6 +60,12 @@ export default function CalendarCard({
     events.filter(
       (e) => e.date === date && e.month === viewMonth + 1 && e.year === viewYear
     );
+
+  const transactionsForDate = (date: number) =>
+    transactions.filter((tx) => {
+      const [y, m, d] = tx.date.split("-").map(Number);
+      return d === date && m === viewMonth + 1 && y === viewYear;
+    });
 
   const shiftMonth = (delta: number) => {
     const next = new Date(viewYear, viewMonth + delta, 1);
@@ -114,8 +125,10 @@ export default function CalendarCard({
 
           const isToday = date === todayDate;
           const dayEvents = eventsForDate(date);
+          const dayTransactions = transactionsForDate(date);
           const isHovered = hoveredDate === date;
           const hasEvents = dayEvents.length > 0;
+          const hasTransactions = dayTransactions.length > 0;
           const eventColor = dayEvents[0]?.color;
           const col = idx % 7;
           const tooltipAlign =
@@ -137,12 +150,14 @@ export default function CalendarCard({
                 onClick={() => {
                   if (dayEvents.length > 0) {
                     onSelectEvent(dayEvents[0]);
+                  } else if (dayTransactions.length > 0) {
+                    onSelectTransaction?.(dayTransactions[0]);
                   }
                 }}
-                className={`flex w-full items-center justify-center rounded-lg font-medium transition-all duration-200 ease-premium ${
+                className={`relative flex w-full items-center justify-center rounded-lg font-medium transition-all duration-200 ease-premium ${
                   isCompact ? "h-7 text-[12px]" : "h-8 text-[13px]"
                 } ${
-                  hasEvents ? "cursor-pointer" : ""
+                  hasEvents || hasTransactions ? "cursor-pointer" : ""
                 } ${
                   isToday
                     ? "bg-navy font-semibold text-inverse shadow-sm"
@@ -161,9 +176,17 @@ export default function CalendarCard({
                 ) : (
                   date
                 )}
+                {hasTransactions && !hasEvents && (
+                  <span
+                    className={`absolute bottom-0.5 h-1 w-1 rounded-full ${
+                      isToday ? "bg-inverse" : "bg-brand"
+                    }`}
+                    aria-hidden
+                  />
+                )}
               </button>
 
-              {isHovered && dayEvents.length > 0 && (
+              {isHovered && (hasEvents || hasTransactions) && (
                 <div
                   className={`absolute top-full z-20 mt-1.5 w-max max-w-[11rem] rounded-xl border border-hairline bg-card p-2 shadow-card-hover ${tooltipAlign}`}
                 >
@@ -179,6 +202,25 @@ export default function CalendarCard({
                       style={{ color: ev.color }}
                     >
                       {ev.title}
+                    </button>
+                  ))}
+                  {hasEvents && hasTransactions && (
+                    <div className="my-1 h-px bg-hairline" />
+                  )}
+                  {dayTransactions.map((tx) => (
+                    <button
+                      key={tx.id}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectTransaction?.(tx);
+                      }}
+                      className="mb-1 flex w-full items-center justify-between gap-2 whitespace-nowrap rounded-md px-2 py-1 text-left text-[10px] font-medium text-ink2 transition-colors last:mb-0 hover:bg-surface"
+                    >
+                      <span className="truncate">{tx.merchant}</span>
+                      <span className="shrink-0 tabular-nums text-muted">
+                        {formatCurrency(tx.amount)}
+                      </span>
                     </button>
                   ))}
                 </div>

@@ -107,9 +107,6 @@ export default function AnomalyReviewModal({
           <div className="mt-6 rounded-2xl border border-warning/20 bg-warning/5 p-5">
             <p className="text-[13px] font-semibold text-ink">이상 사유</p>
             <p className="mt-2 text-[14px] leading-relaxed text-ink2">{anomaly.reason}</p>
-            {anomaly.ruleReference && (
-              <p className="mt-3 text-[12px] text-muted">회칙: {anomaly.ruleReference}</p>
-            )}
           </div>
 
           <div className="mt-4 rounded-2xl bg-surface p-4 ring-1 ring-hairline">
