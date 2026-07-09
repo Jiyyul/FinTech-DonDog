@@ -28,11 +28,18 @@ ChartJS.register(
 type BudgetTrendChartProps = {
   data: MonthlyBudgetPoint[];
   preview?: boolean;
+  lineColor?: string;
+  showBudget?: boolean;
+  onMonthClick?: (monthIndex: number) => void;
 };
 
-export default function BudgetTrendChart({ data, preview = false }: BudgetTrendChartProps) {
-  const lineColor = CHART_COLORS.행사비;
-
+export default function BudgetTrendChart({
+  data,
+  preview = false,
+  lineColor = CHART_COLORS.행사비,
+  showBudget = true,
+  onMonthClick,
+}: BudgetTrendChartProps) {
   const chartData = {
     labels: data.map((d) => d.month),
     datasets: [
@@ -42,8 +49,8 @@ export default function BudgetTrendChart({ data, preview = false }: BudgetTrendC
         borderColor: lineColor,
         backgroundColor: chartColorAlpha(lineColor, 0.08),
         borderWidth: 2,
-        pointRadius: 0,
-        pointHoverRadius: 5,
+        pointRadius: onMonthClick && !preview ? 4 : 0,
+        pointHoverRadius: onMonthClick && !preview ? 6 : 5,
         pointBackgroundColor: lineColor,
         pointBorderColor: CHART_UI.card,
         pointBorderWidth: 2,
@@ -63,6 +70,11 @@ export default function BudgetTrendChart({ data, preview = false }: BudgetTrendC
           easing: "easeOutQuart",
         },
     devicePixelRatio: preview ? 2 : undefined,
+    onClick: (_event, elements) => {
+      if (!onMonthClick || preview || elements.length === 0) return;
+      const index = elements[0].index;
+      if (index >= 0) onMonthClick(index);
+    },
     interaction: {
       mode: "index",
       intersect: false,
@@ -107,7 +119,12 @@ export default function BudgetTrendChart({ data, preview = false }: BudgetTrendC
               const sign = point.changeRate > 0 ? "+" : "";
               lines.push(`전월 대비: ${sign}${point.changeRate}%`);
             }
-            lines.push(`예산: ${formatCurrency(point.budget)}`);
+            if (showBudget && point.budget > 0) {
+              lines.push(`예산: ${formatCurrency(point.budget)}`);
+            }
+            if (onMonthClick && !preview) {
+              lines.push("클릭하여 결제내역 보기");
+            }
             return lines;
           },
         },
@@ -119,7 +136,7 @@ export default function BudgetTrendChart({ data, preview = false }: BudgetTrendC
     <div
       className={`relative h-full w-full min-w-0 overflow-visible ${
         preview ? "min-h-[110px]" : "min-h-[240px]"
-      }`}
+      } ${onMonthClick && !preview ? "cursor-pointer" : ""}`}
     >
       <Line data={chartData} options={options} />
     </div>

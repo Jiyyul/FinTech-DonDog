@@ -5,8 +5,6 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight, Upload } from "lucide-react";
 import Card from "@/components/common/Card";
 import Button from "@/components/common/Button";
-import type { BudgetCategory } from "@/lib/dashboard-types";
-import { CATEGORY_COLORS } from "@/lib/chart-colors";
 import { AMOUNT_THRESHOLD, BUDGET_USED } from "@/lib/dashboard-mock-data";
 import { formatCurrency } from "@/lib/format";
 
@@ -20,15 +18,6 @@ type BudgetHistoryItem = {
   type: "budget_change" | "ai_review";
   label?: string;
 };
-
-const TREND_CATEGORIES: BudgetCategory[] = [
-  "행사비",
-  "식비",
-  "운영비",
-  "교통비",
-  "장비비",
-  "기타",
-];
 
 const INITIAL_HISTORY: BudgetHistoryItem[] = [
   {
@@ -68,20 +57,6 @@ const INITIAL_HISTORY: BudgetHistoryItem[] = [
   },
 ];
 
-const MONTHS = ["1월", "2월", "3월", "4월", "5월", "6월"] as const;
-
-const MONTHLY_BY_CATEGORY: Record<string, number[]> = {
-  전체: [620, 780, 1050, 890, 1120, 860],
-  행사비: [280, 320, 450, 380, 520, 410],
-  식비: [180, 210, 280, 240, 310, 250],
-  운영비: [90, 120, 150, 130, 160, 110],
-  교통비: [40, 55, 80, 60, 70, 50],
-  장비비: [20, 45, 60, 50, 40, 30],
-  기타: [10, 30, 40, 30, 20, 10],
-};
-
-type TrendFilter = "전체" | BudgetCategory;
-
 const inputClass =
   "h-12 w-full rounded-btn border border-hairline bg-card px-4 text-[14px] outline-none transition-colors focus:border-brand focus:shadow-[0_0_0_3px_rgba(10,22,128,0.12)]";
 
@@ -97,10 +72,6 @@ export default function BudgetManagementPage() {
   const [anomalyThresholdInput, setAnomalyThresholdInput] = useState(String(AMOUNT_THRESHOLD));
   const [rulesFileName, setRulesFileName] = useState("학생회_회칙.pdf");
   const [history, setHistory] = useState(INITIAL_HISTORY);
-  const [trendFilter, setTrendFilter] = useState<TrendFilter>("전체");
-
-  const trendData = MONTHLY_BY_CATEGORY[trendFilter] ?? MONTHLY_BY_CATEGORY.전체;
-  const trendMax = Math.max(...trendData);
 
   const handleTotalBudgetSave = () => {
     const next = Number(totalBudgetInput);
@@ -241,57 +212,6 @@ export default function BudgetManagementPage() {
               )}
             </li>
           ))}
-        </ul>
-      </Card>
-
-      <div className="my-8 border-t border-hairline" />
-
-      <Card>
-        <h2 className="mb-4 text-[16px] font-semibold text-navy">월별 사용 추이</h2>
-        <div className="mb-5 flex flex-wrap gap-2">
-          {(["전체", ...TREND_CATEGORIES] as TrendFilter[]).map(
-            (cat) => (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => setTrendFilter(cat)}
-                className={`rounded-full px-3 py-1.5 text-[12px] font-medium transition-all duration-200 ${
-                  trendFilter === cat
-                    ? "bg-navy text-inverse"
-                    : "bg-surface text-ink2 ring-1 ring-hairline hover:text-ink"
-                }`}
-              >
-                {cat}
-              </button>
-            )
-          )}
-        </div>
-        <ul className="space-y-3">
-          {MONTHS.map((month, index) => {
-            const value = trendData[index] ?? 0;
-            const width = trendMax > 0 ? Math.round((value / trendMax) * 100) : 0;
-            const color =
-              trendFilter === "전체"
-                ? "#0A1680"
-                : CATEGORY_COLORS[trendFilter as BudgetCategory];
-
-            return (
-              <li key={month} className="flex items-center gap-3">
-                <span className="w-8 shrink-0 text-[13px] font-medium text-ink2">{month}</span>
-                <div className="flex min-w-0 flex-1 items-center gap-2">
-                  <div className="h-3 flex-1 overflow-hidden rounded-full bg-surface">
-                    <div
-                      className="h-full rounded-full transition-all duration-300"
-                      style={{ width: `${width}%`, backgroundColor: color }}
-                    />
-                  </div>
-                  <span className="w-16 shrink-0 text-right text-[12px] tabular-nums text-muted">
-                    {formatCurrency(value * 10_000)}
-                  </span>
-                </div>
-              </li>
-            );
-          })}
         </ul>
       </Card>
     </div>

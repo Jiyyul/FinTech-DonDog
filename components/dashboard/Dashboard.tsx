@@ -15,6 +15,7 @@ import ReceiptUploadModal from "@/components/dashboard/ReceiptUploadModal";
 import ScheduleFormModal from "@/components/dashboard/ScheduleFormModal";
 import FloatingAIChat from "@/components/ai/FloatingAIChat";
 import EmptyDashboard from "@/components/dashboard/EmptyDashboard";
+import type { ManualTransactionInput } from "@/lib/transaction-utils";
 import { useSearch } from "@/components/layout/SearchProvider";
 import { useMockUser } from "@/components/providers/MockUserProvider";
 import {
@@ -22,10 +23,10 @@ import {
   ANOMALY_QUEUE,
   ACTIVITY_FEED,
   CALENDAR_EVENTS,
-  RECENT_TRANSACTIONS,
 } from "@/lib/dashboard-mock-data";
 import { prependActivity } from "@/lib/activity-feed";
 import { matchesSearch } from "@/lib/search-utils";
+import { buildManualTransaction } from "@/lib/transaction-utils";
 import type {
   ActivityItem,
   AuditAnomaly,
@@ -42,7 +43,7 @@ export default function Dashboard() {
   const [anomalies, setAnomalies] = useState(() => (hasEmptyData ? [] : ANOMALY_QUEUE));
   const [deferredAnomalies, setDeferredAnomalies] = useState<AuditAnomaly[]>([]);
   const [transactions, setTransactions] = useState(() =>
-    hasEmptyData ? [] : RECENT_TRANSACTIONS
+    hasEmptyData ? [] : ALL_TRANSACTIONS
   );
   const [calendarEvents, setCalendarEvents] = useState(() =>
     hasEmptyData ? [] : CALENDAR_EVENTS
@@ -88,10 +89,15 @@ export default function Dashboard() {
     setTxDrawerOpen(true);
   };
 
-  const displayedTransactions = useMemo(() => {
+  const filteredTransactions = useMemo(() => {
     if (!query.trim()) return transactions;
     return transactions.filter((tx) => matchesSearch(tx, query));
   }, [transactions, query]);
+
+  const displayedTransactions = useMemo(
+    () => filteredTransactions.slice(0, 4),
+    [filteredTransactions]
+  );
 
   useEffect(() => {
     if (!selectTransactionId) return;
@@ -230,6 +236,12 @@ export default function Dashboard() {
     setReceiptTx(null);
   };
 
+  const handleAddTransaction = (input: ManualTransactionInput) => {
+    const newTx = buildManualTransaction(input);
+    setTransactions((prev) => [newTx, ...prev]);
+    logActivity(`${newTx.merchant} 거래내역을 수동 등록했습니다.`, { hasDogIcon: true });
+  };
+
   if (isEmptyDashboard) {
     return <EmptyDashboard onCreateClub={openAddGroupModal} />;
   }
@@ -281,12 +293,13 @@ export default function Dashboard() {
         <div className="dash-grid-cell min-w-0">
           <RecentTransactions
             transactions={displayedTransactions}
-            searchQuery={query}
+            allTransactions={filteredTransactions}
             onSelect={handleSelectTransaction}
             onAddReceipt={(tx) => {
               setReceiptTx(tx);
               setReceiptModalOpen(true);
             }}
+            onAddTransaction={handleAddTransaction}
           />
         </div>
         <div className="dash-grid-cell min-w-0">
