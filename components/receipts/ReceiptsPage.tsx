@@ -49,6 +49,11 @@ export default function ReceiptsPage({
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(
     lockedTransactionId
   );
+  // 카드/통장 연동이 이미 되어 있다고 가정하면(더미 데이터로 대체) 영수증은 대부분
+  // 이미 있는 거래의 "증빙용"이고, 다른 카드 등으로 결제해 연동 내역에 없을 때만
+  // "거래추가용"으로 새 거래를 만든다. lockedTransactionId가 있으면(대시보드에서
+  // 특정 거래를 골라 들어온 경우) 항상 그 거래의 증빙이므로 선택지를 보여주지 않는다.
+  const [saveMode, setSaveMode] = useState<"attach" | "new">("attach");
   const [message, setMessage] = useState<string | null>(null);
   const [ocrError, setOcrError] = useState<string | null>(null);
 
@@ -68,12 +73,14 @@ export default function ReceiptsPage({
     setFile(null);
     setParsed(null);
     setSelectedTransactionId(lockedTransactionId);
+    setSaveMode("attach");
   };
 
   const handleFileSelected = (nextFile: File) => {
     setFile(nextFile);
     setParsed(null);
     setSelectedTransactionId(lockedTransactionId);
+    setSaveMode("attach");
     setMessage(null);
     setOcrError(null);
   };
@@ -105,6 +112,10 @@ export default function ReceiptsPage({
 
   const handleSave = async () => {
     if (!file || !parsed) return;
+    const linkTransactionId =
+      lockedTransactionId ?? (saveMode === "attach" ? selectedTransactionId : null);
+    if (!lockedTransactionId && saveMode === "attach" && !linkTransactionId) return;
+
     setSaving(true);
     try {
       const imageDataUrl = file.type.startsWith("image/")
@@ -113,7 +124,7 @@ export default function ReceiptsPage({
       const receipt = await saveReceiptAction(
         parsed,
         { name: file.name, type: file.type, size: file.size },
-        selectedTransactionId,
+        linkTransactionId,
         imageDataUrl
       );
       setReceipts((prev) => [receipt, ...prev]);
@@ -123,8 +134,8 @@ export default function ReceiptsPage({
         return;
       }
       setMessage(
-        selectedTransactionId
-          ? "영수증을 저장하고 거래에 연결했습니다."
+        linkTransactionId
+          ? "영수증을 증빙으로 저장하고 거래에 연결했습니다."
           : "영수증을 저장하고 새 거래로 등록했습니다."
       );
       resetForm();
@@ -184,7 +195,38 @@ export default function ReceiptsPage({
           {parsed && (
             <>
               <ReceiptParsedForm parsed={parsed} onChange={setParsed} />
+
               {!lockedTransactionId && (
+                <div className="flex gap-2 rounded-2xl border border-hairline bg-surface p-1">
+                  <button
+                    type="button"
+                    onClick={() => setSaveMode("attach")}
+                    className={`flex-1 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-all duration-200 ${
+                      saveMode === "attach"
+                        ? "bg-card text-navy shadow-sm ring-1 ring-hairline"
+                        : "text-ink2 hover:text-ink"
+                    }`}
+                  >
+                    증빙용으로 첨부
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSaveMode("new");
+                      setSelectedTransactionId(null);
+                    }}
+                    className={`flex-1 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-all duration-200 ${
+                      saveMode === "new"
+                        ? "bg-card text-navy shadow-sm ring-1 ring-hairline"
+                        : "text-ink2 hover:text-ink"
+                    }`}
+                  >
+                    새 거래로 추가
+                  </button>
+                </div>
+              )}
+
+              {!lockedTransactionId && saveMode === "attach" && (
                 <ReceiptMatchCandidates
                   candidates={candidates}
                   transactions={transactions}
@@ -192,14 +234,27 @@ export default function ReceiptsPage({
                   onSelect={(id) => setSelectedTransactionId((prev) => (prev === id ? null : id))}
                 />
               )}
-              <Button variant="primary" className="w-full" onClick={handleSave} disabled={saving}>
+
+              {!lockedTransactionId && saveMode === "new" && (
+                <div className="rounded-2xl border border-hairline bg-surface px-4 py-3 text-[13px] text-ink2">
+                  이미 연동된 거래 내역에 없는 결제(예: 다른 카드로 결제)일 때 사용하세요. OCR로
+                  인식한 정보로 새 거래를 등록합니다.
+                </div>
+              )}
+
+              <Button
+                variant="primary"
+                className="w-full"
+                onClick={handleSave}
+                disabled={
+                  saving || (!lockedTransactionId && saveMode === "attach" && !selectedTransactionId)
+                }
+              >
                 {saving
                   ? "저장 중..."
-                  : lockedTransactionId
+                  : lockedTransactionId || saveMode === "attach"
                     ? "영수증 저장 및 거래 연결"
-                    : selectedTransactionId
-                      ? "영수증 저장 및 거래 연결"
-                      : "영수증 저장 (새 거래로 등록)"}
+                    : "영수증 저장 (새 거래로 등록)"}
               </Button>
             </>
           )}
